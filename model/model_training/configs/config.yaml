@@ -475,3 +475,13 @@ debug:
   log_wandb: false
   verbose: true
   num_train_epochs: 0.2
+
+finnish_gpt:
+  model_name: TurkuNLP/gpt3-finnish-small
+  log_wandb: false
+  verbose: true
+  datasets:
+    input_file: /projappl/project_462000185/ville/Open-Assistant/model/.cache/oasst1-fi-train.jsonl
+    val_split: 0.05
+  sort_by_length: false
+  use_custom_sampler: false
