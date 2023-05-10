@@ -19,6 +19,7 @@ def open_jsonl_read(input_file_path: str | Path) -> TextIO:
 
 def read_oasst_obj(line: str) -> ExportMessageTree | ExportMessageNode:
     dict_tree = json.loads(line)
+    #print("Dict tree at reader",dict_tree)
     # validate data
     if "message_id" in dict_tree:
         return pydantic.parse_obj_as(ExportMessageNode, dict_tree)

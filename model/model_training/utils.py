@@ -180,6 +180,7 @@ TOKENIZER_CONFIGS = {
     "deberta-v3": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
     "bloom": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>", "<s>")),
     "electra": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
+    "gpt3-finnish-small": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>")),
 }
 
 
@@ -203,6 +204,9 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
     if "cerebras" in conf.model_name:
         # Only 13B has a tokenizer available on HF
         tokenizer_name = "cerebras/Cerebras-GPT-13B"
+    if "finnish" in conf.model_name:
+        # Only 13B has a tokenizer available on HF
+        tokenizer_name = "TurkuNLP/gpt3-finnish-small"
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name, cache_dir=conf.cache_dir)
 

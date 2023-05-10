@@ -27,7 +27,7 @@ def write_tree(
     tree: ExportMessageTree,
     exclude_none: bool = False,
 ) -> None:
-    json.dump(tree.dict(exclude_none=exclude_none), file, default=default_serializer)
+    json.dump(tree.dict(exclude_none=True), file, default=default_serializer)
     file.write("\n")
 
 

@@ -41,9 +41,10 @@ def load_oasst_export(
         if not isinstance(data_path, Path):
             data_path = Path(data_path)
         input_file_path = data_path / input_file_path
-
+    print("Input_file_path on custom datasets", input_file_path)
     threads_per_tree = []
     for tree in read_message_trees(input_file_path):
+        #print("TREE", tree)
         if tree.tree_state != "ready_for_export" or not tree.prompt.review_result or tree.prompt.lang not in lang_codes:
             continue
 

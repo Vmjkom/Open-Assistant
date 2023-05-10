@@ -153,8 +153,8 @@ oasst_only:
   save_strategy: epoch
   datasets:
     - oasst_export:
-        lang: "bg,ca,cs,da,de,en,es,fr,hr,hu,it,nl,pl,pt,ro,ru,sl,sr,sv,uk"
-        input_file_path: 2023-03-25_oasst_research_ready_synth_labels.jsonl.gz
+        lang: "fi"
+        input_file_path: /users/villekom/instruct_projappl/ville/Open-Assistant/model/.cache/finnish_oasst1_ready_messages.jsonl
         val_split: 0.05
   sort_by_length: false
   use_custom_sampler: false
@@ -174,19 +174,7 @@ oasst_export_eu:
   datasets:
     - oasst_export:
         lang: "en,es,de,fr"
-        input_file_path: 2023-03-27_oasst_research_ready_synth.jsonl.gz
-    - gpt4all
-    - alpaca
-    - code_alpaca
-    - oig_file:
-        source_url: https://huggingface.co/datasets/laion/OIG/resolve/main/unified_chip2.jsonl
-        max_count: 10000
-        min_length: 100
-        val_split: 0.1
-    - oig_file:
-        source_url: https://huggingface.co/datasets/laion/OIG/raw/main/unified_grade_school_math_instructions.jsonl
-        val_split: 0.1
-        min_length: 100
+        input_file_path: /users/villekom/instruct_projappl/ville/Open-Assistant/model/.cache/finnish_oasst1_ready_trees.jsonl
   sort_by_length: false
   use_custom_sampler: false
 
@@ -419,6 +407,9 @@ gpt-neox:
 
 galactica-125m:
   learning_rate: 5e-5
+  dtype: fp16
+  log_wandb: false
+  fuse_gelu: false  
   model_name: facebook/galactica-125m
   weight_decay: 0.0
   warmup_steps: 600
@@ -480,8 +471,5 @@ finnish_gpt:
   model_name: TurkuNLP/gpt3-finnish-small
   log_wandb: false
   verbose: true
-  datasets:
-    input_file: /projappl/project_462000185/ville/Open-Assistant/model/.cache/oasst1-fi-train.jsonl
-    val_split: 0.05
   sort_by_length: false
   use_custom_sampler: false
