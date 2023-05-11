@@ -35,7 +35,7 @@ def main():
     trees: list[ExportMessageTree] = [] 
     all_messages = read_message_list(args.input_file_name)
     
-    assert len(all_messages) > 0,"Messages from read_message_list at line 34 contains nothing"
+    assert len(all_messages) > 0,"No messages read"
     tree_ids = list(set(m.message_tree_id for m in all_messages))
     assert len(tree_ids) > 1
 
@@ -70,7 +70,7 @@ def main():
                 message_tree_id=id,
                 tree_state=messages[0].get('tree_state'),
                 #Message id == message_tree_id
-                prompt=message_dict.get(id) #Prompt starts with the root message node, which is the first one as it is pre sorted
+                prompt=message_dict.get(id)
             )
         
         messages.clear()
