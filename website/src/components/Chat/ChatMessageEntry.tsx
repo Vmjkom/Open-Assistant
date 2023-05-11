@@ -7,10 +7,11 @@ import {
   Text,
   Textarea,
   useBoolean,
+  useClipboard,
   useColorModeValue,
   useOutsideClick,
 } from "@chakra-ui/react";
-import { Check, Edit, RotateCcw, ThumbsUp, X, XCircle } from "lucide-react";
+import { Check, Copy, Edit, RotateCcw, ThumbsUp, X, XCircle } from "lucide-react";
 import { ThumbsDown } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useTranslation } from "next-i18next";
@@ -69,6 +70,7 @@ export const ChatMessageEntry = memo(function ChatMessageEntry({
       onRetry({ parentId, chatId });
     }
   }, [chatId, onRetry, parentId]);
+
   const isAssistant = message.role === "assistant";
   const [isEditing, setIsEditing] = useBoolean(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -99,6 +101,8 @@ export const ChatMessageEntry = memo(function ChatMessageEntry({
     [handleEditSubmit, setIsEditing]
   );
 
+  const { onCopy, hasCopied } = useClipboard(message.content);
+
   return (
     <PendingMessageEntry ref={ref} {...props} isAssistant={isAssistant} content={isEditing ? "" : content!}>
       {!isAssistant && parentId !== null && (
@@ -124,6 +128,7 @@ export const ChatMessageEntry = memo(function ChatMessageEntry({
             _dark={{
               bg: "gray.800",
             }}
+            autoFocus
           ></Textarea>
         </Box>
       )}
@@ -144,7 +149,12 @@ export const ChatMessageEntry = memo(function ChatMessageEntry({
               )}
               {state === "complete" && (
                 <>
-                  {canRetry && <BaseMessageEmojiButton emoji={RotateCcw} onClick={handleRetry} />}
+                  {canRetry && <BaseMessageEmojiButton emoji={RotateCcw} onClick={handleRetry} label={t("retry")} />}
+                  {!hasCopied ? (
+                    <BaseMessageEmojiButton emoji={Copy} onClick={onCopy} label={t("copy")} />
+                  ) : (
+                    <BaseMessageEmojiButton emoji={Check} />
+                  )}
                   <BaseMessageEmojiButton emoji={ThumbsUp} checked={score === 1} onClick={handleThumbsUp} />
                   <BaseMessageEmojiButton emoji={ThumbsDown} checked={score === -1} onClick={handleThumbsDown} />
                 </>
@@ -166,11 +176,16 @@ type PendingMessageEntryProps = {
   "data-id"?: string;
 };
 
+const messageEntryContainerProps = {
+  maxWidth: { base: "3xl", "2xl": "4xl" },
+  w: "full",
+};
+
 export const PendingMessageEntry = forwardRef<HTMLDivElement, PendingMessageEntryProps>(function PendingMessageEntry(
   { content, isAssistant, children, ...props },
   ref
 ) {
-  const bgUser = useColorModeValue("white", "gray.700");
+  const bgUser = "transparent";
   const bgAssistant = useColorModeValue("#DFE8F1", "#42536B");
   const { data: session } = useSession();
   const image = session?.user?.image;
@@ -187,7 +202,8 @@ export const PendingMessageEntry = forwardRef<HTMLDivElement, PendingMessageEntr
       bg={isAssistant ? bgAssistant : bgUser}
       content={content || ""}
       width="full"
-      maxWidth="full"
+      maxWidth={messageEntryContainerProps.maxWidth}
+      containerProps={messageEntryContainerProps}
       {...props}
     >
       {children}

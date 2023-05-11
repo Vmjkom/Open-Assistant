@@ -9,6 +9,7 @@ import {
   InferenceUpdateChatParams,
   ModelInfo,
   TrustedClient,
+  GetChatsParams,
 } from "src/types/Chat";
 import type { Readable } from "stream";
 
@@ -33,8 +34,10 @@ export class OasstInferenceClient {
     return this.request("/auth/trusted", { method: "POST" });
   }
 
-  get_my_chats(): Promise<GetChatsResponse> {
-    return this.request("/chats");
+  get_my_chats(params: GetChatsParams): Promise<GetChatsResponse> {
+    const searchParams = new URLSearchParams(params as Record<string, string>);
+
+    return this.request(`/chats?${searchParams.toString()}`);
   }
 
   async create_chat(): Promise<ChatItem> {
@@ -42,14 +45,9 @@ export class OasstInferenceClient {
     try {
       return await create();
     } catch (err) {
-      if (err instanceof AxiosError && err.response.status === 500) {
-        // if we get an error here, the user might not yet exist in the inference database, which is why we try to create
+      if (err instanceof AxiosError && err.response.status === 404) {
+        // if we get 404, the user does not yet exist in the inference database, which is why we try to create
         // user once (it won't do anything if the user already exists) and then retry the chat creation again.
-        // the current inference server does not check for user existence before trying to insert a message into
-        // the database, which is why we get a 500 instead of what I expect to be 404, we should fix this later
-
-        // this is maybe not the cleanest solution, but otherwise we would have to sign up all users of the website
-        // to inference automatically, which is maybe an overkill
         await this.inference_login();
         return create();
       } else {
