@@ -22,6 +22,7 @@ import { BaseMessageEntry } from "../Messages/BaseMessageEntry";
 import { BaseMessageEmojiButton } from "../Messages/MessageEmojiButton";
 import { MessageInlineEmojiRow } from "../Messages/MessageInlineEmojiRow";
 import { WorkParametersDisplay } from "./WorkParameters";
+import { EncourageMessage } from "./EncourageMessage";
 
 export type EditPromptParams = { parentId: string; chatId: string; content: string };
 
@@ -48,7 +49,16 @@ export const ChatMessageEntry = memo(function ChatMessageEntry({
   ...props
 }: ChatMessageEntryProps) {
   const { t } = useTranslation("common");
-  const { chat_id: chatId, parent_id: parentId, id: messageId, content, score, state, work_parameters } = message;
+  const {
+    chat_id: chatId,
+    parent_id: parentId,
+    id: messageId,
+    content,
+    score,
+    state,
+    work_parameters,
+    used_plugin,
+  } = message;
   const handleVote = useCallback(
     (emoji: "+1" | "-1") => {
       const newScore = getNewScore(emoji, score);
@@ -104,7 +114,13 @@ export const ChatMessageEntry = memo(function ChatMessageEntry({
   const { onCopy, hasCopied } = useClipboard(message.content);
 
   return (
-    <PendingMessageEntry ref={ref} {...props} isAssistant={isAssistant} content={isEditing ? "" : content!}>
+    <PendingMessageEntry
+      ref={ref}
+      {...props}
+      isAssistant={isAssistant}
+      usedPlugin={used_plugin}
+      content={isEditing ? "" : content!}
+    >
       {!isAssistant && parentId !== null && (
         <Box position="absolute" top={{ base: "4", md: 0 }} style={{ insetInlineEnd: `0.5rem` }}>
           {isEditing ? (
@@ -149,6 +165,7 @@ export const ChatMessageEntry = memo(function ChatMessageEntry({
               )}
               {state === "complete" && (
                 <>
+                  <EncourageMessage />
                   {canRetry && <BaseMessageEmojiButton emoji={RotateCcw} onClick={handleRetry} label={t("retry")} />}
                   {!hasCopied ? (
                     <BaseMessageEmojiButton emoji={Copy} onClick={onCopy} label={t("copy")} />
@@ -174,6 +191,7 @@ type PendingMessageEntryProps = {
   children?: ReactNode;
   id?: string;
   "data-id"?: string;
+  usedPlugin?: object;
 };
 
 const messageEntryContainerProps = {
@@ -182,7 +200,7 @@ const messageEntryContainerProps = {
 };
 
 export const PendingMessageEntry = forwardRef<HTMLDivElement, PendingMessageEntryProps>(function PendingMessageEntry(
-  { content, isAssistant, children, ...props },
+  { content, isAssistant, children, usedPlugin, ...props },
   ref
 ) {
   const bgUser = "transparent";
@@ -202,6 +220,8 @@ export const PendingMessageEntry = forwardRef<HTMLDivElement, PendingMessageEntr
       bg={isAssistant ? bgAssistant : bgUser}
       content={content || ""}
       width="full"
+      usedPlugin={usedPlugin}
+      isAssistant={isAssistant}
       maxWidth={messageEntryContainerProps.maxWidth}
       containerProps={messageEntryContainerProps}
       {...props}
