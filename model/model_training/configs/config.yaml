@@ -153,8 +153,8 @@ oasst_only:
   save_strategy: epoch
   datasets:
     - oasst_export:
-        lang: "fi"
-        input_file_path: /users/villekom/instruct_projappl/ville/Open-Assistant/model/.cache/finnish_oasst1_ready_messages.jsonl
+        lang: "en"
+        input_file_path: /scratch/project_462000241/ville/oa_data/2023-04-12_oasst_ready.trees.jsonl
         val_split: 0.05
   sort_by_length: false
   use_custom_sampler: false
@@ -487,7 +487,19 @@ debug:
 
 finnish_gpt:
   model_name: TurkuNLP/gpt3-finnish-small
+  datasets:
+    - oasst_export:
+        lang: "en"
+        input_file_path: /scratch/project_462000241/ville/oa_data/finnish_oasst1_ready_trees.jsonl
+        val_split: 0.05
   log_wandb: false
+  deepspeed_config: configs/zero3_config_sft.json
   verbose: true
+  max_length: 2048
+  save_strategy: steps
+  save_steps: 20
+  gradient_accumulation_steps: 1
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
   sort_by_length: false
-  use_custom_sampler: false
+  use_custom_sampler: True

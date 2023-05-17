@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import logging
 import os
@@ -148,13 +149,19 @@ def argument_parsing(notebook=False, notebook_args=None):
     # Config from YAML
     conf = {}
     configs = read_yamls("./configs")
-    for name in args.configs:
-        if "," in name:
-            for n in name.split(","):
-                conf.update(configs[n])
-        else:
-            conf.update(configs[name])
-
+    conf.update(configs["defaults_rm"])
+    #conf.update(configs["oasst-finnish-gpt-rm"])
+    try:
+        for name in args.configs:
+            
+            if "," in name:
+                for n in name.split(","):
+                    conf.update(configs[n])
+            else:
+                conf.update(configs[name])
+    except KeyError as e:
+        print(f'Error: Could not find the config "{e.args[0]}" in config.yaml')
+        exit(1)
     conf["wandb_entity"] = args.wandb_entity
     conf["local_rank"] = args.local_rank
     conf["deepspeed"] = args.deepspeed
@@ -176,6 +183,8 @@ def argument_parsing(notebook=False, notebook_args=None):
         if type_ == bool:
             type_ = _strtobool
         parser.add_argument(f"--{key}", type=type_, default=value)
+        # Allow --no-{key}  to remove it completely
+        parser.add_argument(f"--no-{key}", dest=key, action="store_const", const=None)
 
     return parser.parse_args(remaining)
 
@@ -186,6 +195,46 @@ def main():
         print(f"trainig_conf = {training_conf}")
 
     init_rng(training_conf)
+
+
+    output_dir = (
+        training_conf.output_dir
+        if training_conf.output_dir
+        else f"{training_conf.model_name}-{training_conf.log_dir}-finetuned"
+    )
+
+    optimizer = OptimizerNames.ADAMW_BNB if training_conf.quantization else OptimizerNames.ADAMW_HF
+
+    args = TrainingArguments(
+        output_dir=output_dir,
+        num_train_epochs=training_conf.num_train_epochs,
+        warmup_steps=training_conf.warmup_steps,
+        learning_rate=float(training_conf.learning_rate),
+        deepspeed=training_conf.deepspeed_config if training_conf.deepspeed else None,
+        optim=optimizer,
+        fp16=training_conf.dtype in ["fp16", "float16"],
+        bf16=training_conf.dtype in ["bf16", "bfloat16"],
+        local_rank=training_conf.local_rank,
+        gradient_checkpointing=training_conf.gradient_checkpointing,
+        gradient_accumulation_steps=training_conf.gradient_accumulation_steps,
+        per_device_train_batch_size=training_conf.per_device_train_batch_size,
+        per_device_eval_batch_size=training_conf.per_device_eval_batch_size,
+        adam_beta1=training_conf.adam_beta1,
+        adam_beta2=training_conf.adam_beta2,
+        adam_epsilon=float(training_conf.adam_epsilon),
+        weight_decay=training_conf.weight_decay,
+        max_grad_norm=training_conf.max_grad_norm,
+        logging_steps=training_conf.logging_steps,
+        save_total_limit=training_conf.save_total_limit,
+        evaluation_strategy="steps",
+        eval_steps=training_conf.eval_steps,
+        save_strategy=training_conf.save_strategy,
+        save_steps=training_conf.save_steps,
+        save_total_limit=1,
+        eval_accumulation_steps=training_conf.eval_accumulation_steps,
+        resume_from_checkpoint=training_conf.resume_from_checkpoint,
+        report_to="wandb" if training_conf.log_wandb else 'none',
+    )
 
     tokenizer = get_tokenizer(training_conf)
     model = get_model(training_conf, tokenizer)
@@ -242,8 +291,6 @@ def main():
     else:
         sampler = None
 
-    optimizer = OptimizerNames.ADAMW_BNB if training_conf.quantization else OptimizerNames.ADAMW_HF
-
     if training_conf.quantization:
         import bitsandbytes
 
@@ -256,41 +303,7 @@ def main():
     if training_conf.fuse_gelu:
         model = fuse_gelu(model)
 
-    output_dir = (
-        training_conf.output_dir
-        if training_conf.output_dir
-        else f"{training_conf.model_name}-{training_conf.log_dir}-finetuned"
-    )
-
-    args = TrainingArguments(
-        output_dir=output_dir,
-        num_train_epochs=training_conf.num_train_epochs,
-        warmup_steps=training_conf.warmup_steps,
-        learning_rate=float(training_conf.learning_rate),
-        deepspeed=training_conf.deepspeed_config if training_conf.deepspeed else None,
-        optim=optimizer,
-        fp16=training_conf.dtype in ["fp16", "float16"],
-        bf16=training_conf.dtype in ["bf16", "bfloat16"],
-        local_rank=training_conf.local_rank,
-        gradient_checkpointing=training_conf.gradient_checkpointing,
-        gradient_accumulation_steps=training_conf.gradient_accumulation_steps,
-        per_device_train_batch_size=training_conf.per_device_train_batch_size,
-        per_device_eval_batch_size=training_conf.per_device_eval_batch_size,
-        adam_beta1=training_conf.adam_beta1,
-        adam_beta2=training_conf.adam_beta2,
-        adam_epsilon=float(training_conf.adam_epsilon),
-        weight_decay=training_conf.weight_decay,
-        max_grad_norm=training_conf.max_grad_norm,
-        logging_steps=training_conf.logging_steps,
-        save_total_limit=training_conf.save_total_limit,
-        evaluation_strategy="steps",
-        eval_steps=training_conf.eval_steps,
-        save_strategy=training_conf.save_strategy,
-        save_steps=training_conf.save_steps,
-        eval_accumulation_steps=training_conf.eval_accumulation_steps,
-        resume_from_checkpoint=training_conf.resume_from_checkpoint,
-        report_to="wandb" if training_conf.log_wandb else None,
-    )
+    
 
     if not training_conf.log_wandb:
         os.environ["WANDB_MODE"] = "offline"

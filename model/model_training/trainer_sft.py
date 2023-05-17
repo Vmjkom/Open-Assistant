@@ -179,6 +179,7 @@ def argument_parsing(notebook=False, notebook_args=None):
     """,
     )
     parser.add_argument("--local_rank", type=int, default=-1)
+    parser.add_argument("--push_to_hub",type=bool,default=False)
     parser.add_argument("--deepspeed", action="store_true")
     parser.add_argument("--no-deepspeed", dest="deepspeed", action="store_false")
     parser.add_argument("--wandb-entity", type=str, default="open-assistant")
@@ -281,10 +282,11 @@ def main():
     )
 
     optimizer = OptimizerNames.ADAMW_BNB if training_conf.quantization else OptimizerNames.ADAMW_HF
-
+    
     # needs to happen before model loading in case of stage 3 training
     args = TrainingArguments(
         output_dir=output_dir,
+        overwrite_output_dir=True,
         num_train_epochs=training_conf.num_train_epochs,
         warmup_steps=training_conf.warmup_steps,
         learning_rate=float(training_conf.learning_rate),
@@ -292,7 +294,7 @@ def main():
         optim=optimizer,
         fp16=training_conf.dtype in ["fp16", "float16"],
         bf16=training_conf.dtype in ["bf16", "bfloat16"],
-        half_precision_backend='cpu_amp',
+        half_precision_backend='cpu_amp',#For amd either cpu_amp or apex is allowed
         local_rank=training_conf.local_rank,
         gradient_checkpointing=training_conf.gradient_checkpointing,
         gradient_accumulation_steps=training_conf.gradient_accumulation_steps,
@@ -311,7 +313,7 @@ def main():
         save_steps=training_conf.save_steps,
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
-        report_to="wandb" if training_conf.log_wandb else None,
+        report_to="wandb" if training_conf.log_wandb else 'none',
     )
 
     init_rng(training_conf)

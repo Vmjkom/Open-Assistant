@@ -1,8 +1,14 @@
 # Train using supervised examples
 
+## Setup for lumi
+
+module use /appl/local/csc/modulefiles
+module load pytorch
+
+
 ## Requirements
 
-`pip install -e ..` (pyproject.toml resides in the parent directory)
+`pip install --user -e ..` (pyproject.toml resides in the parent directory)
 
 Make sure the oasst_data module is installed
 
@@ -10,7 +16,10 @@ Make sure the oasst_data module is installed
 python -m pip install ../../oasst-data/
 ```
 
-Run tests: `pytest .`
+Run tests: `python3 -m pytest .`
+
+
+#The flash attention module mentioned below is not supported for amd
 
 You might run into a `SystemExit` here for the test
 `tests/test_patched_gpt_neox.py::test_flash_attention_patch`. If so just follow
@@ -22,8 +31,12 @@ python -m pip install flash_attn
 
 Start training SFT model
 
+export CACHE_PATH=/scratch/<your_path_here>
+export MODEL_PATH=/scratch/<your_path_here>
+
+
 ```bash
-python trainer_sft.py --configs galactica-125m
+python trainer_sft.py --configs finnish_gpt --cache_dir $CACHE_PATH --output_dir $MODEL_PATH/sft_model
 ```
 
 If you want to get started with a small amount of test data to begin with, add

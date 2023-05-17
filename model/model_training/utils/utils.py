@@ -189,7 +189,7 @@ TOKENIZER_CONFIGS = {
     "deberta-v3": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
     "bloom": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>", "<s>")),
     "electra": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
-    "gpt3-finnish-small": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>")),
+    "gpt3-finnish": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>")),
 }
 
 
@@ -199,6 +199,8 @@ def match_tokenizer_name(model_name: str) -> TokenizerConfig:
     i.e. model_name `Salesforce/codegen-2B-multi` has config name `codegen`
     """
     tokenizer_config_matches = [config for name, config in TOKENIZER_CONFIGS.items() if name in model_name]
+    print()
+    print("Tokenizer configs",tokenizer_config_matches)
     if not tokenizer_config_matches:
         raise ValueError(f"Cannot find any tokeniser configuration to match {model_name=}")
     elif 1 < len(tokenizer_config_matches):
@@ -208,6 +210,7 @@ def match_tokenizer_name(model_name: str) -> TokenizerConfig:
 
 
 def get_tokenizer(conf) -> transformers.AutoTokenizer:
+    
     tokenizer_name = conf.model_name
 
     if "cerebras" in conf.model_name:
@@ -410,7 +413,7 @@ def read_yamls(dir):
 
     if no_conf:
         print(f"WARNING: No yaml files found in {dir}")
-
+    
     return conf
 
 

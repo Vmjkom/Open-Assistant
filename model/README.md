@@ -64,7 +64,6 @@ export SFT_MODEL=$MODEL_PATH/sft_model/$(ls -t $MODEL_PATH/sft_model/ | head -n 
 5. Train the reward model
 
 ```bash
-cd ../reward/instructor
 python trainer.py configs/deberta-v3-base.yml --output_dir $MODEL_PATH/reward_model
 ```
 
