@@ -18,7 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--max_new_tokens", type=int, default=200)
     parser.add_argument("--top_k", type=int, default=None)
-    parser.add_argument("--top_p", type=int, default=0.9)
+    parser.add_argument("--top_p", type=int, default=1)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--do-sample", type=_strtobool, default=True)
     parser.add_argument("--format", type=str, default="v2")
@@ -33,16 +33,19 @@ if __name__ == "__main__":
         print("Loading from", args.load_checkpoint)
         # "ckpts_save/best_checkpoint/pytorch_model/mp_rank_00_model_states.pt"
         ckpt = torch.load(args.load_checkpoint)
-        import IPython
+        print("ckpt",ckpt.items())
+        #import IPython
 
-        IPython.embed()
-        model = get_specific_model(args.model_path, torch_dtype=torch.float16, cache_dir=args.cache_dir)
+        #IPython.embed()
+        model = get_specific_model(args.model_path, torch_dtype=torch.bfloat16, cache_dir=args.cache_dir)
 
         base_dict = {k[11:]: v for k, v in ckpt["module"].items() if not k.startswith("base_model.transformer")}
         # base_dict = {k[11:]: v for k, v in ckpt['module'].items()}
         print(model.load_state_dict(base_dict, strict=False))
     else:
+        
         if args.eightbit:
+            print("Loaded 8bit")
             model = get_specific_model(
                 args.model_path,
                 load_in_8bit=True,
@@ -53,21 +56,22 @@ if __name__ == "__main__":
                 cache_dir=args.cache_dir,
             )
         else:
-            model = get_specific_model(args.model_path, cache_dir=args.cache_dir, torch_dtype=torch.float16)
+            model = get_specific_model(args.model_path, cache_dir=args.cache_dir, torch_dtype=torch.bfloat16)#Torch float 32 ei toimi amd:n kanssa
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     model = model.to(device)
-
+    print("Model",model,'\n')
     model.gradient_checkpointing_enable()  # reduce number of stored activations
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.model_path)
-    # tokenizer = transformers.AutoTokenizer.from_pretrained("dvruette/oasst-pythia-6.9b-4000-steps")
+    print("Tokenizer",tokenizer)
     if args.per_digit_tokens:
         tokenizer._tokenizer.pre_processor = pre_tokenizers.Digits(True)
 
     human_token_id = tokenizer.additional_special_tokens_ids[
         tokenizer.additional_special_tokens.index(QA_SPECIAL_TOKENS["Question"])
     ]
-
+    print("Human id",human_token_id)
     print('Type "quit" to exit')
     print("Press Control + C to restart conversation (spam to exit)")
 
@@ -88,7 +92,7 @@ if __name__ == "__main__":
                 + "".join(format_pairs(conversation_history, tokenizer.eos_token, add_initial_reply_token=True)),
                 return_tensors="pt",
             )
-
+            
             with torch.cuda.amp.autocast():
                 out = model.generate(
                     input_ids=batch.to(model.device),
