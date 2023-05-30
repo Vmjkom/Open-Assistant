@@ -183,7 +183,7 @@ oasst_only:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_462000241/ville/oa_data/2023-04-12_oasst_ready.trees.jsonl
+        input_file_path: /projappl/project_462000241/oa_data/2023-04-12_oasst_ready.trees.jsonl
         val_split: 0.05
   sort_by_length: false
   use_custom_sampler: false
@@ -203,7 +203,7 @@ oasst_finnish:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_462000241/ville/oa_data/finnish_oasst1_ready_trees.jsonl
+        input_file_path: /projappl/project_462000241/oa_data/finnish_oasst1_ready_trees.jsonl
         val_split: 0.05
   sort_by_length: false
   use_custom_sampler: false
@@ -649,14 +649,14 @@ codegen:
   per_device_eval_batch_size: 4
 
 debug:
-  learning_rate: 1e-3
+  learning_rate: 1e-2
   model_name: TurkuNLP/gpt3-finnish-small
   #model_name: EleutherAI/pythia-1b-deduped
   eval_steps: 20
   eval_size: 20
   save_steps: 20
   save_strategy: 'no'
-  gradient_accumulation_steps: 12
+  gradient_accumulation_steps: 1
   per_device_train_batch_size: 4
   per_device_eval_batch_size: 2
   quantization: false
@@ -674,7 +674,7 @@ gpt3-finnish-small:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_462000241/ville/oa_data/finnish_oasst1_ready_trees.jsonl
+        input_file_path: /scratch/project_462000241/villekom/oa_data/finnish_oasst1_ready_trees.jsonl
         val_split: 0.05
   log_wandb: false
   deepspeed_config: configs/zero3_config_sft.json
@@ -693,7 +693,7 @@ gpt3-finnish-xl:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_462000241/ville/oa_data/finnish_oasst1_ready_trees.jsonl
+        input_file_path: /scratch/project_462000241/villekom/oa_data/finnish_oasst1_ready_trees.jsonl
         val_split: 0.05
   log_wandb: false
   deepspeed_config: configs/zero3_config_sft.json

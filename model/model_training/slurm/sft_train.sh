@@ -27,10 +27,9 @@ module load pytorch
 
 export TORCH_EXTENSIONS_DIR=/tmp/$USER/torch_extensions
 
-export DATA_PATH=/scratch/project_462000241/ville/oa_data
-export CACHE=/scratch/project_462000241/ville/cache
-export MODEL_PATH=/scratch/project_462000241/ville/oa_models
-export LOGS=/scratch/project_462000241/ville/logs
+export CACHE=/scratch/project_462000241/$USER/cache
+export MODEL_PATH=/scratch/project_462000241/$USER/oa_models
+export LOGS=/scratch/project_462000241/$USER/logs
 
 #Distributed variables
 #export MASTER_PORT=6317
@@ -40,17 +39,11 @@ export LOCAL_RANK=$SLURM_LOCALID
 export RANK=$SLURM_PROCID
 export WORLD_SIZE=$((SLURM_GPUS_ON_NODE*SLURM_NNODES))
 
-export INST_SCRATCH=/scratch/project_462000241/ville
-export INST_PROJAPPL=/projappl/project_462000241/ville
-
 export TOKENIZERS_PARALLELISM=true
 
 TORCH_DISTRIBUTED_DEBUG=ERROR
 
 export OMP_NUM_THREADS=1
-
-#export SINGULARITY_BIND=$INST_SCRATCH,$INST_PROJAPPL,$SCRATCH,$PROJAPPL
-#export PYTHONPATH=$PYTHONUSERBASE
 
 srun -l trainer_sft.py --configs gpt3-finnish-xl \
         --cache_dir $CACHE \
@@ -59,4 +52,3 @@ srun -l trainer_sft.py --configs gpt3-finnish-xl \
         --show_dataset_stats \
         --local_rank $LOCAL_RANK \
         --deepspeed \
-        --report_to tensorboard

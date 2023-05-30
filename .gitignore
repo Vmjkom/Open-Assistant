@@ -25,3 +25,7 @@ backend/openapi.json
 
 # JetBrains PyCharm:
 .idea/
+.err
+.out
+model/*.err
+model/*.out

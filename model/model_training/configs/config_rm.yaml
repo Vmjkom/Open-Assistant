@@ -144,11 +144,11 @@ oasst-finnish-gpt-rm:
   datasets:
     - oasst_export:
         lang: "en,es,de,fr"
-        input_file_path: /pfs/lustrep2/scratch/project_462000241/ville/oa_data/finnish_oasst1_ready_trees.jsonl
+        input_file_path: /projappl/project_462000241/oa_data/finnish_oasst1_ready_trees.jsonl
         val_split: 0.1
   use_custom_sampler: true
   sort_by_length: false
-  model_name: /scratch/project_462000241/ville/oa_models/finnish-gpt3-small-sft/checkpoint-500
+  model_name: 
   learning_rate: 1e-5
   residual_dropout: 0.01
   weight_decay: 0.0
