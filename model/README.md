@@ -7,50 +7,24 @@ Here are some minimal commands to tun to whole pipeline on the collected data.
 **make sure python >= 3.10, otherwise, you would meet the
 [[issue]](https://github.com/tiangolo/typer/issues/371#issuecomment-1288987924)**
 
-1. First create the data path location.
-
-```bash
-mkdir -p .cache
-mkdir -p .saved_models
-export DATA_PATH=$PWD/.cache
-export MODEL_PATH=$PWD/.saved_models
-```
-
-2. Then download the OA data.
-
-```bash
-cp /path/to/<oa.jsonl> $DATA_PATH
-```
-
-Change the `<oa.jsonl>` file used in the `model_training/configs/config.yaml`,
-`model_training/configs/config_rl.yaml`
-files.
-
-- (TODO) add better parsing of the config files that is consistent for sft, rm
-  and rl training.
+1. Setup for lumi
+'''bash
+./get_started.sh
 
 ### SFT Training
 
-3. Start with the SFT training.
+2. Start with the SFT training.
 
 ```bash
 cd model_training
-# export shared modules
-#Didnt need this step personally - Ville
-export PYTHONPATH=$PYTHONPATH:../../oasst-shared
-
-python trainer_sft.py --configs defaults oa_dataset_only pythia --cache_dir $DATA_PATH --output_dir $MODEL_PATH/sft_model
-
-# if you want to use wandb, add
---wandb_entity your_username/team_name
-```
+sbatch slurm/sft_train.sh
 
 To change the model used, i.e. larger pythia version create a new config in
 `model_training/configs/config.yaml` or set the flag `--model_name` to
 `EleutherAI/pythia-{size}-deduped`. Larger models will probably need to also
 adjust the `--learning_rate` and `--per_device_train_batch_size` flags.
 
-4. Get SFT trained model
+3. Get SFT trained model
 
 ```bash
 # choose a specific checkpoint
@@ -62,13 +36,13 @@ export SFT_MODEL=$MODEL_PATH/sft_model/$(ls -t $MODEL_PATH/sft_model/ | head -n 
 
 ### RM Training
 
-5. Train the reward model
+4. Train the reward model
 
 ```bash
-python trainer.py configs/deberta-v3-base.yml --output_dir $MODEL_PATH/reward_model
+sbatch slurm/rm_train.sh
 ```
 
-6. Get RM trained model
+5. Get RM trained model
 
 ```bash
 # choose a specific checkpoint
