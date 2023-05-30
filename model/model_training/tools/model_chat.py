@@ -41,7 +41,7 @@ method: str = args.format
 def talk(human_input: str, history: List[Tuple[str, str]], sep_token: str, prefix=""):
     histories = []
     if method == "v2":
-        prefix = "<prefix>You are a helpful assistant called Joi trained by OpenAssistant on large corpus of data, you will now help user to answer the question as concise as possible</prefix>"
+        prefix = "<prefix>Olet avulias Joi-niminen assistentti, jonka OpenAssistant on kouluttanut laajalla tietoaineistolla, autat nyt käyttäjää vastaamaan kysymykseen mahdollisimman ytimekkäästi</prefix>"
         for question, answer in history:
             histories.append(
                 "{}{}{}{}".format(QA_SPECIAL_TOKENS["Question"], question, QA_SPECIAL_TOKENS["Answer"], answer)

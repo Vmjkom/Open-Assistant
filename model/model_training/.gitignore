@@ -15,3 +15,4 @@ model_rl
 .triton_models
 triton_models
 ckpts
+logs

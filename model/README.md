@@ -23,7 +23,7 @@ cp /path/to/<oa.jsonl> $DATA_PATH
 ```
 
 Change the `<oa.jsonl>` file used in the `model_training/configs/config.yaml`,
-`model_training/configs/config_rl.yaml` and `reward/instructor/rank_datasets.py`
+`model_training/configs/config_rl.yaml`
 files.
 
 - (TODO) add better parsing of the config files that is consistent for sft, rm
@@ -36,6 +36,7 @@ files.
 ```bash
 cd model_training
 # export shared modules
+#Didnt need this step personally - Ville
 export PYTHONPATH=$PYTHONPATH:../../oasst-shared
 
 python trainer_sft.py --configs defaults oa_dataset_only pythia --cache_dir $DATA_PATH --output_dir $MODEL_PATH/sft_model

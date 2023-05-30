@@ -7,6 +7,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import datasets
 import torch
+
+# from model_training.custom_datasets.formatting import DatasetEntry
+from model_training import print_rank_0
 from model_training.custom_datasets.dialogue_collator import DialogueDataCollator
 from model_training.efficiency_utils import fuse_gelu
 from model_training.utils.utils import (
@@ -186,6 +189,7 @@ def argument_parsing(notebook=False, notebook_args=None):
     parser.add_argument("--resume_from_checkpoint", action="store_true", help="Resume from last saved checkpoint")
     parser.add_argument("--rng_seed", type=int, help="rng seed")
     parser.add_argument("--show_dataset_stats", action="store_true", help="Show dataset stats", default=False)
+    parser.add_argument("--report_to",type=str,help="The list of integrations to report the results and logs to", default='none')
     parser.set_defaults(deepspeed=False)
 
     if notebook:
@@ -205,13 +209,14 @@ def argument_parsing(notebook=False, notebook_args=None):
             else:
                 conf.update(configs[name])
     except KeyError as e:
-        print(f'Error: Could not find the config "{e.args[0]}" in config.yaml')
+        print_rank_0(f'Error: Could not find the config "{e.args[0]}" in config.yaml')
         exit(1)
 
     conf["wandb_entity"] = args.wandb_entity
     conf["local_rank"] = args.local_rank
     conf["deepspeed"] = args.deepspeed
     conf["resume_from_checkpoint"] = args.resume_from_checkpoint
+    conf["report_to"] = args.report_to
     if args.rng_seed is not None:
         conf["rng_seed"] = args.rng_seed
     conf["show_dataset_stats"] = args.show_dataset_stats
@@ -220,7 +225,7 @@ def argument_parsing(notebook=False, notebook_args=None):
     if conf["deepspeed"]:
         conf["world_size"] = int(os.getenv("WORLD_SIZE", default="1"))
     else:
-        conf["world_size"] = 1
+        conf["world_size"] = os.environ['WORLD_SIZE']
 
     # Override config from command-line
     parser = argparse.ArgumentParser()
@@ -236,22 +241,30 @@ def argument_parsing(notebook=False, notebook_args=None):
 
 
 def tokenizer_sanity_check(tokenizer):
-    print("Tokenizer sanity check:")
-    print(f"Type: {type(tokenizer).__name__}")
+    print_rank_0("Tokenizer sanity check:")
+    print_rank_0(f"Type: {type(tokenizer).__name__}")
 
-    print("special_tokens_map:", tokenizer.special_tokens_map)
+    print_rank_0(f"special_tokens_map: {tokenizer.special_tokens_map}")
 
-    print(f"bos_token='{tokenizer.bos_token}', bos_token_id={tokenizer.bos_token_id}")
-    print(f"eos_token='{tokenizer.eos_token}', eos_token_id={tokenizer.eos_token_id}")
+    print_rank_0(f"bos_token={tokenizer.bos_token} bos_token_id={tokenizer.bos_token_id}")
+    print_rank_0(f"eos_token={tokenizer.eos_token} eos_token_id={tokenizer.eos_token_id}")
 
-    from model_training.custom_datasets.formatting import QA_SPECIAL_TOKENS, format_pairs
+    from model_training.custom_datasets.formatting import QA_SPECIAL_TOKENS, create_dataset_entry_qa
 
-    in_text = format_pairs(["Q1", "A1", "Q2", "A2"], tokenizer.eos_token)
+    ds_entry = create_dataset_entry_qa(
+        mode="sft", questions=["Q1", "Q2"], answers=["A1", "A2"], lang="en", context="ctx"
+    )
+    in_text = ds_entry.get_formatted(
+        tokenizer.eos_token,
+        use_system_tag=True,
+        system_property_dropout=0,
+        system_add_length=True,
+    )
     in_text = "".join(in_text)
 
     prompter_token_id = tokenizer.convert_tokens_to_ids(QA_SPECIAL_TOKENS["Question"])
     assistant_token_id = tokenizer.convert_tokens_to_ids(QA_SPECIAL_TOKENS["Answer"])
-    print(f"{prompter_token_id=}, {assistant_token_id=}")
+    print_rank_0(f"{prompter_token_id=}, {assistant_token_id=}")
 
     tr = tokenizer(in_text, max_length=1024, pad_to_max_length=False, truncation=True)
 
@@ -262,18 +275,18 @@ def tokenizer_sanity_check(tokenizer):
             i += 1
         message_indices.append(i)
 
-    print("encoding result:", tr)
+    print_rank_0(f"encoding result:, {tr}")
     for i, xs in enumerate(tr.input_ids):
         decoded = tokenizer.decode(xs)
-        print(f'{i}: {xs} -> "{decoded}"')
+        print_rank_0(f'{i}: {xs} -> "{decoded}"')
 
-    print("message_indices:", message_indices)
+    print_rank_0(f"message_indices: {message_indices}")
 
 
 def main():
     training_conf = argument_parsing()
     if not training_conf.deepspeed or training_conf.local_rank == 0:
-        print(f"trainig_conf = {training_conf}")
+        print_rank_0(f"trainig_conf = {training_conf}")
 
     output_dir = (
         training_conf.output_dir
@@ -294,8 +307,8 @@ def main():
         optim=optimizer,
         fp16=training_conf.dtype in ["fp16", "float16"],
         bf16=training_conf.dtype in ["bf16", "bfloat16"],
-        half_precision_backend='cpu_amp',#For amd either cpu_amp or apex is allowed
-        local_rank=training_conf.local_rank,
+        half_precision_backend='apex',#For amd either cpu_amp or apex is allowed
+        local_rank=os.environ['SLURM_LOCALID'],
         gradient_checkpointing=training_conf.gradient_checkpointing,
         gradient_accumulation_steps=training_conf.gradient_accumulation_steps,
         per_device_train_batch_size=training_conf.per_device_train_batch_size,
@@ -313,7 +326,8 @@ def main():
         save_steps=training_conf.save_steps,
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
-        report_to="wandb" if training_conf.log_wandb else 'none',
+        report_to=training_conf.report_to,
+        dataloader_num_workers=2
     )
 
     init_rng(training_conf)
@@ -332,6 +346,9 @@ def main():
         pad_to_multiple_of=16,
         use_system_prefix=training_conf.use_system_prefix,
         system_prefix=training_conf.system_prefix,
+        use_system_tag=training_conf.use_system_tag,
+        system_property_dropout=training_conf.system_property_dropout,
+        system_add_length=training_conf.system_add_length,
     )
 
     if training_conf.val_max_length is None:
@@ -345,6 +362,9 @@ def main():
         samples_mixing=False,
         use_system_prefix=training_conf.use_system_prefix,
         system_prefix=training_conf.system_prefix,
+        use_system_tag=training_conf.use_system_tag,
+        system_property_dropout=training_conf.system_property_dropout,
+        system_add_length=training_conf.system_add_length,
     )
 
     train, evals = get_dataset(training_conf)
@@ -353,7 +373,7 @@ def main():
         not training_conf.deepspeed or training_conf.local_rank == 0
     )
     if show_dataset_stats:
-        print("Training dataset sizes (before sampling):")
+        print_rank_0("Training dataset sizes (before sampling):")
         total = len(train)
         for d in train.datasets:
             if isinstance(d, Subset):
@@ -364,15 +384,21 @@ def main():
                 name = type(d).__name__
                 if hasattr(d, "name"):
                     name += f" ({d.name})"
-            print(f"{name}: {len(d)} ({len(d) / total:.2%})")
-        print(f"\nTotal train: {total}")
-        print("-" * 80)
-        print("Evaluation set sizes:")
+            print_rank_0(f"{name}: {len(d)} ({len(d) / total:.2%})")
+
+            # ensure that all entries can be formatted
+            # for x in d:
+            #     if isinstance(x, DatasetEntry):
+            #         x.get_formatted("sft", "<eos>")
+
+        print_rank_0(f"\nTotal train: {total}")
+        print_rank_0("-" * 80)
+        print_rank_0("Evaluation set sizes:")
         total_eval = sum(len(x) for x in evals.values())
         for k, d in evals.items():
-            print(f"{k}: {len(d)} ({len(d) / total_eval:.2%})")
-        print(f"\nTotal eval: {total_eval}")
-        print("-" * 80)
+            print_rank_0(f"{k}: {len(d)} ({len(d) / total_eval:.2%})")
+        print_rank_0(f"\nTotal eval: {total_eval}")
+        print_rank_0("-" * 80)
 
     if training_conf.use_custom_sampler:
         samples_length = None
@@ -442,9 +468,9 @@ def main():
         compute_metrics=partial(compute_metrics, metrics=metrics, preprocess_fns=preprocess_fns),
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
     )
-    print("Training arguments",args)
+    print_rank_0(f"Training arguments,{args}")
     trainer.train(resume_from_checkpoint=training_conf.resume_from_checkpoint)
-    trainer.save_model()
+    trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
 
 

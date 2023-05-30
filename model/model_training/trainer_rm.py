@@ -149,7 +149,7 @@ def argument_parsing(notebook=False, notebook_args=None):
     # Config from YAML
     conf = {}
     configs = read_yamls("./configs")
-    conf.update(configs["defaults_rm"])
+    #conf.update(configs["defaults_rm"])
     #conf.update(configs["oasst-finnish-gpt-rm"])
     try:
         for name in args.configs:
@@ -212,8 +212,8 @@ def main():
         learning_rate=float(training_conf.learning_rate),
         deepspeed=training_conf.deepspeed_config if training_conf.deepspeed else None,
         optim=optimizer,
-        fp16=training_conf.dtype in ["fp16", "float16"],
-        bf16=training_conf.dtype in ["bf16", "bfloat16"],
+        #fp16=training_conf.dtype in ["fp16", "float16"],
+        #bf16=training_conf.dtype in ["bf16", "bfloat16"],
         local_rank=training_conf.local_rank,
         gradient_checkpointing=training_conf.gradient_checkpointing,
         gradient_accumulation_steps=training_conf.gradient_accumulation_steps,
@@ -230,7 +230,6 @@ def main():
         eval_steps=training_conf.eval_steps,
         save_strategy=training_conf.save_strategy,
         save_steps=training_conf.save_steps,
-        save_total_limit=1,
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
         report_to="wandb" if training_conf.log_wandb else 'none',
@@ -245,12 +244,18 @@ def main():
         max_length=training_conf.max_length,
         pad_to_multiple_of=16,
         max_replies=training_conf.max_replies,
+        use_system_tag=training_conf.use_system_tag,
+        system_property_dropout=training_conf.system_property_dropout,
+        system_add_length=training_conf.system_add_length,
     )
     eval_collate_fn = RankingDataCollator(
         tokenizer,
         max_length=training_conf.max_length,
         pad_to_multiple_of=16,
         max_replies=training_conf.max_replies,
+        use_system_tag=training_conf.use_system_tag,
+        system_property_dropout=training_conf.system_property_dropout,
+        system_add_length=training_conf.system_add_length,
     )
 
     show_dataset_stats = (training_conf.verbose or training_conf.show_dataset_stats) and (

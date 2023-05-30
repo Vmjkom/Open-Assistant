@@ -30,9 +30,9 @@ def main():
 
     print(f"reading: {args.input_file_name}")
     
-
+    
     #List of trees containing the messages
-    trees: list[ExportMessageTree] = [] 
+    trees: list[ExportMessageTree] = []
     all_messages = read_message_list(args.input_file_name)
     
     assert len(all_messages) > 0,"No messages read"

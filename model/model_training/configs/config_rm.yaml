@@ -20,7 +20,7 @@ defaults_rm:
   logging_steps: 10
   max_grad_norm: 2.0
   save_total_limit: 4
-  dtype: fp16
+  dtype:
   eval_accumulation_steps:
   freeze_layer:
   cache_dir: .cache
@@ -43,6 +43,9 @@ defaults_rm:
   metrics: ["accuracy", "kendalltau"]
   deepspeed_config: configs/zero_config.json
   max_replies: 5
+  use_system_tag: False
+  system_property_dropout: 0.5
+  system_add_length: false
 
 oasst-rm-1-pythia-6.9b:
   is_reward_model: true
@@ -83,6 +86,14 @@ oasst-rm-1-pythia-6.9b:
   eval_steps: 251
   save_steps: 500
   deepspeed_config: configs/zero3_config_sft.json
+  use_system_tag: false
+  system_property_dropout: 0.5
+  system_add_length: false
+
+use_system_tag:
+  use_system_tag: True
+  system_property_dropout: 0.5
+  system_add_length: True
 
 oasst-rm-1-pythia-2.8b:
   is_reward_model: true
@@ -137,17 +148,17 @@ oasst-finnish-gpt-rm:
         val_split: 0.1
   use_custom_sampler: true
   sort_by_length: false
-  model_name: TurkuNLP/gpt3-finnish-small
+  model_name: /scratch/project_462000241/ville/oa_models/finnish-gpt3-small-sft/checkpoint-500
   learning_rate: 1e-5
   residual_dropout: 0.01
   weight_decay: 0.0
-  dtype: bf16
   max_length: 2048
   use_flash_attention: false
   fused_gelu: true
   warmup_steps: 50
-  gradient_accumulation_steps: 4
+  gradient_accumulation_steps: 1
   per_device_train_batch_size: 1
+  save_total_limit: 1
   per_device_eval_batch_size: 5
   num_train_epochs: 2
   eval_steps: 500
@@ -160,11 +171,11 @@ oasst-rm-1-pythia-1.4b:
         lang: "en"
         input_file_path: /pfs/lustrep2/scratch/project_462000241/ville/oa_data/finnish_oasst1_ready_trees.jsonl
         val_split: 0.2
-model_name: /scratch/project_462000241/ville/oa_models/finnish_gpt_small_sft/checkpoint-13000
-max_length: 2048
-gradient_accumulation_steps: 1
-per_device_train_batch_size: 4
-per_device_eval_batch_size: 4
-log_wandb: false
-verbose: false
-metrics: ["accuracy"]
+  model_name: /scratch/project_462000241/ville/oa_models/finnish_gpt_small_sft/checkpoint-13000
+  max_length: 2048
+  gradient_accumulation_steps: 1
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  log_wandb: false
+  verbose: false
+  metrics: ["accuracy"]

@@ -9,8 +9,8 @@ from typing import List, NamedTuple
 import evaluate
 import torch
 import transformers
-import tritonclient.grpc as client_util
 import yaml
+from model_training import is_last_rank, print_rank_0
 from model_training.custom_datasets import get_one_dataset
 from model_training.custom_datasets.formatting import QA_SPECIAL_TOKENS
 from model_training.models import freeze_top_n_layers, get_specific_model
@@ -20,7 +20,6 @@ from sklearn.model_selection import train_test_split
 from tokenizers import pre_tokenizers
 from torch.utils.data import ConcatDataset, Dataset, Subset
 from torch.utils.data.distributed import DistributedSampler
-from tritonclient.utils import np_to_triton_dtype
 
 from .losses import CrossEntropyLoss, PolyLoss, RMCLSLoss, RMLoss
 
@@ -32,14 +31,8 @@ def _strtobool(x):
 def init_rng(conf: argparse.Namespace) -> None:
     seed = conf.rng_seed
     if seed is not None:
-        print(f"RNG seed: {seed}")
+        print_rank_0(f"RNG seed: {seed}")
         transformers.set_seed(seed)
-
-
-def prepare_tensor(name: str, input):
-    t = client_util.InferInput(name, input.shape, np_to_triton_dtype(input.dtype))
-    t.set_data_from_numpy(input)
-    return t
 
 
 class PerDatasetSampler(DistributedSampler):
@@ -144,7 +137,7 @@ def get_dataset_fractions(conf, dataset_sizes: List[int], verbose: bool = False)
     """Calculate fraction of each dataset to use per epoch when sub-sampling"""
 
     if verbose:
-        print("Creating sampler for datasets:")
+        print_rank_0("Creating sampler for datasets:")
 
     fractions = []
     for i, data_config in enumerate(conf):
@@ -164,7 +157,7 @@ def get_dataset_fractions(conf, dataset_sizes: List[int], verbose: bool = False)
             fractions.append(1)
 
         if verbose:
-            print(f"{dataset_name}: {fractions[-1]:.2%} ({int(dataset_sizes[i]*fractions[-1])})")
+            print_rank_0(f"{dataset_name}: {fractions[-1]:.2%} ({int(dataset_sizes[i]*fractions[-1])})")
     return fractions
 
 
@@ -189,7 +182,7 @@ TOKENIZER_CONFIGS = {
     "deberta-v3": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
     "bloom": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>", "<s>")),
     "electra": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
-    "gpt3-finnish": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>")),
+    "finnish": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>", "<s>")),
 }
 
 
@@ -200,7 +193,8 @@ def match_tokenizer_name(model_name: str) -> TokenizerConfig:
     """
     tokenizer_config_matches = [config for name, config in TOKENIZER_CONFIGS.items() if name in model_name]
     print()
-    print("Tokenizer configs",tokenizer_config_matches)
+    if is_last_rank():
+        print("Tokenizer configs",tokenizer_config_matches)
     if not tokenizer_config_matches:
         raise ValueError(f"Cannot find any tokeniser configuration to match {model_name=}")
     elif 1 < len(tokenizer_config_matches):
@@ -216,9 +210,6 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
     if "cerebras" in conf.model_name:
         # Only 13B has a tokenizer available on HF
         tokenizer_name = "cerebras/Cerebras-GPT-13B"
-    if "finnish" in conf.model_name:
-        # Only 13B has a tokenizer available on HF
-        tokenizer_name = "TurkuNLP/gpt3-finnish-small"
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name, cache_dir=conf.cache_dir)
 
@@ -341,7 +332,8 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
         if len(tokenizer) != n_embs or pad_vocab_size_to_multiple_of:
             p = pad_vocab_size_to_multiple_of
             target_size = len(tokenizer) if not p else math.ceil(len(tokenizer) / p) * p
-            print("Resizing embeddings to", target_size)
+            if is_last_rank():
+                print("Resizing embeddings to", target_size)
             model.resize_token_embeddings(target_size)
 
         if conf.freeze_layer:
@@ -349,7 +341,7 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
 
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([p.numel() for p in model_parameters])
-    print("Number of trainable parameters: {}M".format(int(params / 1e6)))
+    print_rank_0("Number of trainable parameters: {}M".format(int(params / 1e6)))
 
     patch_model(model, resid_pdrop=conf.residual_dropout, flash_attention=conf.use_flash_attention)
 

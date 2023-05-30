@@ -37,7 +37,7 @@ if __name__ == "__main__":
         #import IPython
 
         #IPython.embed()
-        model = get_specific_model(args.model_path, torch_dtype=torch.bfloat16, cache_dir=args.cache_dir)
+        model = get_specific_model(args.model_path, cache_dir=args.cache_dir)
 
         base_dict = {k[11:]: v for k, v in ckpt["module"].items() if not k.startswith("base_model.transformer")}
         # base_dict = {k[11:]: v for k, v in ckpt['module'].items()}
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                 cache_dir=args.cache_dir,
             )
         else:
-            model = get_specific_model(args.model_path, cache_dir=args.cache_dir, torch_dtype=torch.bfloat16)#Torch float 32 ei toimi amd:n kanssa
+            model = get_specific_model(args.model_path, cache_dir=args.cache_dir)#Torch float 32 ei toimi amd:n kanssa
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
