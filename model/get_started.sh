@@ -1,6 +1,4 @@
 #!/bin/bash
-git clone git@github.com:Vmjkom/Open-Assistant.git
-git checkout Lumi
 
 module --force purge
 module use /appl/local/csc/modulefiles
