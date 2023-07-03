@@ -2,6 +2,7 @@ import { Avatar, AvatarProps, Box, BoxProps, Flex, useColorModeValue } from "@ch
 import { forwardRef, lazy, Suspense } from "react";
 import { colors } from "src/styles/Theme/colors";
 import { StrictOmit } from "ts-essentials";
+
 import { PluginUsageDetails } from "./PluginUsageDetails";
 const RenderedMarkdown = lazy(() => import("./RenderedMarkdown"));
 
@@ -13,10 +14,11 @@ export type BaseMessageEntryProps = StrictOmit<BoxProps, "bg" | "backgroundColor
   usedPlugin?: object;
   isAssistant?: boolean;
   containerProps?: BoxProps;
+  isPlainText?: boolean;
 };
 
 export const BaseMessageEntry = forwardRef<HTMLDivElement, BaseMessageEntryProps>(function BaseMessageEntry(
-  { content, avatarProps, children, highlight, usedPlugin, isAssistant, containerProps, ...props },
+  { content, avatarProps, children, highlight, usedPlugin, isAssistant, containerProps, isPlainText, ...props },
   ref
 ) {
   const bg = useColorModeValue("#DFE8F1", "#42536B");
@@ -29,6 +31,7 @@ export const BaseMessageEntry = forwardRef<HTMLDivElement, BaseMessageEntryProps
       flexDirection={{ base: "column", md: "row" }}
       alignItems="start"
       maxWidth="full"
+      width={"fit-content"}
       position="relative"
       p={{ base: 3, md: 0 }}
       borderRadius={{ base: "18px", md: 0 }}
@@ -61,10 +64,14 @@ export const BaseMessageEntry = forwardRef<HTMLDivElement, BaseMessageEntryProps
         {...props}
         _dark={{ outlineColor: { md: colors.dark.active }, ...props._dark }}
       >
-        <Suspense fallback={content}>
-          {isAssistant ? <PluginUsageDetails usedPlugin={usedPlugin} /> : null}
-          <RenderedMarkdown markdown={content} disallowedElements={[]}></RenderedMarkdown>
-        </Suspense>
+        {!isPlainText ? (
+          <Suspense fallback={content}>
+            {isAssistant ? <PluginUsageDetails usedPlugin={usedPlugin} /> : null}
+            <RenderedMarkdown markdown={content} disallowedElements={[]}></RenderedMarkdown>
+          </Suspense>
+        ) : (
+          content
+        )}
         {children}
       </Box>
     </Flex>

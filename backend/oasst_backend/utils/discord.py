@@ -8,7 +8,15 @@ from oasst_backend.models.message import Message
 ROOT_ENDPOINT = "https://discord.com/api/v10"
 
 
-def send_new_report_message(message: Message, label_text: str, user_id: UUID) -> None:
+def send_new_report_message(message: Message, label_text: str, user_id: UUID):
+    """
+    Send a message to the Discord channel when a new message is flagged.
+
+    Args:
+        message (Message): the flagged message
+        label_text (str): the label text
+        user_id (UUID): the user ID
+    """
     if settings.DISCORD_API_KEY is None or settings.DISCORD_CHANNEL_ID is None:
         return
 

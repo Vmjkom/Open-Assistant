@@ -14,12 +14,17 @@ class Settings(pydantic.BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
+    redis_ratelim_db: int = 1
 
     message_queue_expire: int = 60
     work_queue_max_size: int | None = None
 
     chat_max_messages: int | None = None
     message_max_length: int | None = None
+
+    rate_limit: bool = True
+    rate_limit_messages_user_times: int = 20
+    rate_limit_messages_user_seconds: int = 600
 
     allowed_worker_compat_hashes: str = "*"
 
@@ -111,6 +116,12 @@ class Settings(pydantic.BaseSettings):
     assistant_message_timeout: int = 60
 
     inference_cors_origins: str = "*"
+
+    # sent as a work parameter, higher values increase load on workers
+    plugin_max_depth: int = 4
+
+    # url path prefix for plugins we host on this server
+    plugins_path_prefix: str = "/plugins"
 
     @property
     def inference_cors_origins_list(self) -> list[str]:
