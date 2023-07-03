@@ -183,6 +183,9 @@ TOKENIZER_CONFIGS = {
     "bloom": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>", "<s>")),
     "electra": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
     "gpt3-finnish-small": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>")),
+    "falcon": TokenizerConfig(
+        special_tokens=SpecialTokens("<|endoftext|>", "<|endoftext|>", sep_token="<|endoftext|>")
+    ),
 }
 
 
@@ -344,7 +347,12 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
     params = sum([p.numel() for p in model_parameters])
     print("Number of trainable parameters: {}M".format(int(params / 1e6)))
 
-    patch_model(model, resid_pdrop=conf.residual_dropout, flash_attention=conf.use_flash_attention)
+    patch_model(
+        model,
+        resid_pdrop=conf.residual_dropout,
+        flash_attention=conf.use_flash_attention,
+        residual_dropout_lima=conf.residual_dropout_lima,
+    )
 
     return model
 

@@ -1,17 +1,21 @@
 import asyncio
+import math
 import signal
 import sys
 
 import fastapi
+import redis.asyncio as redis
 import sqlmodel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_limiter import FastAPILimiter
 from loguru import logger
-from oasst_inference_server import database, deps, models
+from oasst_inference_server import database, deps, models, plugins
 from oasst_inference_server.routes import account, admin, auth, chats, configs, workers
 from oasst_inference_server.settings import settings
 from oasst_shared.schemas import inference
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 
 app = fastapi.FastAPI(title=settings.PROJECT_NAME)
 
@@ -56,6 +60,7 @@ def terminate_server(signum, frame):
 
 @app.on_event("startup")
 async def alembic_upgrade():
+    """Upgrades database schema based on Alembic migration scripts."""
     signal.signal(signal.SIGINT, terminate_server)
     if not settings.update_alembic:
         logger.warning("Skipping alembic upgrade on startup (update_alembic is False)")
@@ -78,6 +83,27 @@ async def alembic_upgrade():
             logger.warning(f"Retrying alembic upgrade in {timeout} seconds")
             await asyncio.sleep(timeout)
     signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
+@app.on_event("startup")
+async def setup_rate_limiter():
+    if not settings.rate_limit:
+        logger.warning("Skipping rate limiter setup on startup (rate_limit is False)")
+        return
+
+    async def http_callback(request: fastapi.Request, response: fastapi.Response, pexpire: int):
+        """Error callback function when too many requests"""
+        expire = math.ceil(pexpire / 1000)
+        raise fastapi.HTTPException(f"Too Many Requests. Retry After {expire} seconds.", HTTP_429_TOO_MANY_REQUESTS)
+
+    try:
+        client = redis.Redis(
+            host=settings.redis_host, port=settings.redis_port, db=settings.redis_ratelim_db, decode_responses=True
+        )
+        logger.info(f"Connected to {client=}")
+        await FastAPILimiter.init(client, http_callback=http_callback)
+    except Exception:
+        logger.exception("Failed to establish Redis connection")
 
 
 @app.on_event("startup")
@@ -112,6 +138,10 @@ app.include_router(admin.router)
 app.include_router(chats.router)
 app.include_router(workers.router)
 app.include_router(configs.router)
+
+# mount builtin plugins to be hosted on this server
+for app_prefix, sub_app in plugins.plugin_apps.items():
+    app.mount(path=settings.plugins_path_prefix + app_prefix, app=sub_app)
 
 
 @app.on_event("startup")
