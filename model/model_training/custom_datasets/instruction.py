@@ -25,6 +25,7 @@ INSTRUCTION_DATASETS = {
     "oa_stackexchange": "donfu/oa-stackexchange",
     "tell_a_joke": "mikegarts/oa_tell_a_joke_20000",
     "wizardlm_70k": "ehartford/WizardLM_alpaca_evol_instruct_70k_unfiltered",
+    "finnish_instruction_qa": "/projappl/project_462000241/data/instruct_qa/instruct_qa_fi.jsonl"
 }
 
 
@@ -39,11 +40,20 @@ class InstructionDataset(Dataset):
         elif dataset == "wizardlm_70k":
             self.instruction_column = "instruction"
             self.response_column = "output"
+        elif dataset == "finnish_instruction_qa":
+            self.instruction_column = "instruction"
+            self.response_column = "response"
         else:
             self.instruction_column = "INSTRUCTION"
             self.response_column = "RESPONSE"
-
-        ds = load_dataset(INSTRUCTION_DATASETS[dataset], cache_dir=cache_dir, split=split)
+        if dataset == "finnish_instruction_qa":
+            #print(f" dict path : {INSTRUCTION_DATASETS[dataset]}")
+            ds = load_dataset("json",
+                              data_files=INSTRUCTION_DATASETS[dataset],
+                              cache_dir=cache_dir,
+                              split=split)
+        else:
+            ds = load_dataset(INSTRUCTION_DATASETS[dataset], cache_dir=cache_dir, split=split)
         self.dataset = []
         num_invalid = 0
         for i in range(len(ds)):

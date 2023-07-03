@@ -17,8 +17,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--max_new_tokens", type=int, default=200)
-    parser.add_argument("--top_k", type=int, default=None)
-    parser.add_argument("--top_p", type=int, default=1)
+    parser.add_argument("--top_k", type=int, default=50)
+    parser.add_argument("--top_p", type=int, default=0.85)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--do-sample", type=_strtobool, default=True)
     parser.add_argument("--format", type=str, default="v2")
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                 cache_dir=args.cache_dir,
             )
         else:
-            model = get_specific_model(args.model_path, cache_dir=args.cache_dir)#Torch float 32 ei toimi amd:n kanssa
+            model = get_specific_model(args.model_path, cache_dir=args.cache_dir,torch_dtype=torch.bfloat16)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -92,19 +92,18 @@ if __name__ == "__main__":
                 + "".join(format_pairs(conversation_history, tokenizer.eos_token, add_initial_reply_token=True)),
                 return_tensors="pt",
             )
-            
             with torch.cuda.amp.autocast():
                 out = model.generate(
-                    input_ids=batch.to(model.device),
-                    min_new_tokens=4,
-                    max_new_tokens=args.max_new_tokens,
-                    do_sample=args.do_sample,
-                    top_k=args.top_k,
-                    top_p=args.top_p,
-                    temperature=args.temperature,
-                    eos_token_id=tokenizer.eos_token_id,
-                    pad_token_id=tokenizer.eos_token_id,
-                )
+                        input_ids=batch.to(model.device),
+                        min_new_tokens=4,
+                        max_new_tokens=args.max_new_tokens,
+                        do_sample=args.do_sample,
+                        top_k=args.top_k,
+                        top_p=args.top_p,
+                        temperature=args.temperature,
+                        eos_token_id=tokenizer.eos_token_id,
+                        pad_token_id=tokenizer.eos_token_id,
+                    )
 
             if out[0][-1] == tokenizer.eos_token_id:
                 response = out[0][:-1]

@@ -182,7 +182,7 @@ TOKENIZER_CONFIGS = {
     "deberta-v3": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
     "bloom": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>", "<s>")),
     "electra": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
-    "finnish": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>")),
+    "finnish": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>",sep_token="<|endoftext|>")),
 }
 
 
@@ -212,9 +212,9 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
         tokenizer_name = "cerebras/Cerebras-GPT-13B"
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name, cache_dir=conf.cache_dir)
-
+    print_rank_0(f"Tokenizer: {tokenizer}")
     tokenizer_config = match_tokenizer_name(conf.model_name)
-
+    print_rank_0(f"Tokenizer config: {tokenizer_config} ")
     if hasattr(conf, "per_digit_tokens") and conf.per_digit_tokens:
         tokenizer._tokenizer.pre_processor = pre_tokenizers.Digits(True)
 
@@ -238,7 +238,9 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
     additional_special_tokens = list(set(additional_special_tokens + list(QA_SPECIAL_TOKENS.values())))
 
     tokenizer.add_special_tokens({"additional_special_tokens": additional_special_tokens})
-
+    print_rank_0(f"additional Special tokens: {additional_special_tokens}")
+    print_rank_0(f"Tokenizer special tokens: {tokenizer_config.special_tokens}")
+    print_rank_0(f"Tokenizer: {tokenizer}")
     return tokenizer
 
 
