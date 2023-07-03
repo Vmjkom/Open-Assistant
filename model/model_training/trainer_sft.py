@@ -8,7 +8,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import datasets
 import torch
 
-# from model_training.custom_datasets.formatting import DatasetEntry
+import numpy as np
+from model_training.custom_datasets.formatting import DatasetEntry
 from model_training import print_rank_0
 from model_training.custom_datasets.dialogue_collator import DialogueDataCollator
 from model_training.efficiency_utils import fuse_gelu
@@ -26,11 +27,12 @@ from model_training.utils.utils import (
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
-from transformers import PreTrainedModel, Trainer, TrainingArguments
+from transformers import PreTrainedModel, Trainer, TrainingArguments, TrainerCallback, EarlyStoppingCallback
 from transformers.trainer_pt_utils import IterableDatasetShard
 from transformers.trainer_utils import seed_worker
 from transformers.training_args import OptimizerNames
-from transformers.utils import is_datasets_available
+from transformers import EarlyStoppingCallback
+from transformers.utils import is_datasets_available, logging
 
 
 def compute_metrics(eval_pred, preprocess_fns, metrics):
@@ -38,7 +40,7 @@ def compute_metrics(eval_pred, preprocess_fns, metrics):
     for metric, preprocess_fn in zip(metrics, preprocess_fns):
         preds, labels = preprocess_fn(eval_pred)
         out = dict(**out, **metric.compute(predictions=preds, references=labels))
-
+    
     return out
 
 
@@ -46,6 +48,46 @@ def preprocess_logits_for_metrics(logits, labels):
     pred_ids = torch.argmax(logits, dim=-1)
     return pred_ids
 
+
+class EarlyStopEvalLossCallback(TrainerCallback):
+
+
+    def __init__(self, early_stopping_patience: int = 1, early_stopping_threshold: Optional[float] = 0.0):
+        self.early_stopping_patience = early_stopping_patience
+        self.early_stopping_threshold = early_stopping_threshold
+        # early_stopping_patience_counter denotes the number of times validation metrics failed to improve.
+        self.early_stopping_patience_counter = 0
+
+    """
+    If evaluation loss from oasst data stops improving past a 2
+    """
+    def check_metric_value(self, args, state, control, metric_value):
+        # best_metric is set by code for load_best_model
+        operator = np.greater if args.greater_is_better else np.less
+        if state.best_metric (
+            operator(metric_value, state.best_metric)
+            and abs(metric_value - state.best_metric) > self.early_stopping_threshold
+        ):
+            self.early_stopping_patience_counter = 0
+        else:
+            self.early_stopping_patience_counter += 1
+
+    def on_evaluate(self, args, state, control, metrics, **kwargs):
+        metric_oasst= "eval_oasst_export_loss"
+        metric_qa="eval_finnish_instruction_qa_loss"
+        metrics_keys = list(metrics.keys())
+        metric_to_check = metrics_keys[0]
+        #print(f"Metric value {metric_value}")
+        if metric_to_check is None:
+            print_rank_0(
+                f"early stopping required metric_for_best_model, but did not find {metric_to_check} so early stopping"
+                " is disabled"
+            )
+            return
+
+        self.check_metric_value(args, state, control, metric_to_check)
+        if self.early_stopping_patience_counter >= self.early_stopping_patience:
+            control.should_training_stop = True
 
 class SFTTrainer(Trainer):
     def __init__(
@@ -285,8 +327,8 @@ def tokenizer_sanity_check(tokenizer):
 
 def main():
     training_conf = argument_parsing()
-    if not training_conf.deepspeed or training_conf.local_rank == 0:
-        print_rank_0(f"trainig_conf = {training_conf}")
+    #if not training_conf.deepspeed or training_conf.local_rank == 0:
+        #print_rank_0(f"trainig_conf = {training_conf}")
 
     output_dir = (
         training_conf.output_dir
@@ -307,7 +349,7 @@ def main():
         optim=optimizer,
         fp16=training_conf.dtype in ["fp16", "float16"],
         bf16=training_conf.dtype in ["bf16", "bfloat16"],
-        half_precision_backend='apex',#For amd either cpu_amp or apex is allowed
+        half_precision_backend='auto',#For amd either cpu_amp or apex is allowed
         local_rank=os.environ['SLURM_LOCALID'],
         gradient_checkpointing=training_conf.gradient_checkpointing,
         gradient_accumulation_steps=training_conf.gradient_accumulation_steps,
@@ -327,8 +369,11 @@ def main():
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
         report_to=training_conf.report_to,
-        dataloader_num_workers=2
     )
+
+    json_args = args.to_json_string()
+    """with open(output_dir/training_arguments.json,'w') as f:
+        f.write(json_args)"""
 
     init_rng(training_conf)
 
@@ -343,7 +388,6 @@ def main():
         random_offset_probability=training_conf.random_offset_probability,
         label_masking=training_conf.label_masking,
         samples_mixing=training_conf.samples_mixing,
-        pad_to_multiple_of=16,
         use_system_prefix=training_conf.use_system_prefix,
         system_prefix=training_conf.system_prefix,
         use_system_tag=training_conf.use_system_tag,
@@ -468,7 +512,7 @@ def main():
         compute_metrics=partial(compute_metrics, metrics=metrics, preprocess_fns=preprocess_fns),
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
     )
-    print_rank_0(f"Training arguments,{args}")
+    #trainer.add_callback(EarlyStoppingCallback(3, 0.0))
     trainer.train(resume_from_checkpoint=training_conf.resume_from_checkpoint)
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
