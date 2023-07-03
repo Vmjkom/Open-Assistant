@@ -1,0 +1,18 @@
+{
+    "train_micro_batch_size_per_gpu": "auto",
+    "gradient_accumulation_steps": "auto",
+    "gradient_clipping": "auto",
+    "zero_optimization": {
+    "stage": 0
+    },
+    "scheduler": {
+        "type": "WarmupDecayLR",
+        "params": {
+          "warmup_min_lr": "auto",
+          "warmup_max_lr": "auto",
+          "warmup_num_steps": "auto",
+          "warmup_type": "linear",
+          "total_num_steps": "auto"
+        }
+    }
+}
