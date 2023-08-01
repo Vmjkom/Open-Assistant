@@ -82,6 +82,7 @@ class PerDatasetSampler(DistributedSampler):
         self.shuffle = shuffle
         self.rank = rank
         self.world_size = world_size
+        self.epoch = 0
 
         if world_size == 1:
             self.rank = 0
@@ -90,7 +91,7 @@ class PerDatasetSampler(DistributedSampler):
         self.seed = seed
         self.samples_length = samples_length
 
-    def set_epoch(self, epoch) -> None:
+    def set_epoch(self, epoch: int) -> None:
         self.epoch = epoch
 
     def __len__(self) -> int:
@@ -127,11 +128,12 @@ class PerDatasetSampler(DistributedSampler):
         return iter(epoch_idx)
 
     @classmethod
-    def build_sampler_from_config(cls, training_conf, datasets: List[Dataset], verbose: bool = False, *args, **kwargs):
+    def build_sampler_from_config(cls, training_conf, datasets: List[Dataset], verbose: bool = False, **kwargs):
         dataset_sizes = [len(x) for x in datasets]
         fractions = get_dataset_fractions(training_conf.datasets, dataset_sizes, verbose)
         dataset_size_per_epoch = [int(size * frac) for size, frac in zip(dataset_sizes, fractions)]
-        return cls(dataset_sizes, dataset_size_per_epoch, *args, **kwargs)
+        seed = training_conf.rng_seed
+        return cls(dataset_sizes=dataset_sizes, dataset_size_per_epoch=dataset_size_per_epoch, seed=seed, **kwargs)
 
 
 def get_dataset_fractions(conf, dataset_sizes: List[int], verbose: bool = False):
@@ -187,6 +189,7 @@ TOKENIZER_CONFIGS = {
     "falcon": TokenizerConfig(
         special_tokens=SpecialTokens("<|endoftext|>", "<|endoftext|>", sep_token="<|endoftext|>")
     ),
+    "LLongMA": TokenizerConfig(special_tokens=SpecialTokens("</s>", "</s>", sep_token="<s>")),
 }
 
 
@@ -441,3 +444,24 @@ def process_output(output: str, method: str = "v2", bot_name: str = "Joi") -> st
         answer = output.split("\n\n{}:".format(bot_name))[-1]
         answer = answer.split("</s>")[0].replace("<|endoftext|>", "").lstrip().split("\n\n{}:".format(bot_name))[0]
     return answer
+
+
+def merge_dicts(default: dict, config: dict):
+    """
+    merge default dict with config dict to override params
+    """
+    for k, v in default.items():
+        if k not in config.keys():
+            config.update({k: v})
+
+    return config
+
+
+def get_all_linear_layers(model):
+    cls = torch.nn.Linear
+
+    modules = {name.split(".")[-1] for name, module in model.named_modules() if isinstance(module, cls)}
+    if "lm_head" in modules:
+        modules.remove("lm_head")
+
+    return list(modules)

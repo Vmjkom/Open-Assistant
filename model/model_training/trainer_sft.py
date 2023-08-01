@@ -3,7 +3,7 @@ import argparse
 import logging
 import os
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import datasets
 import torch
@@ -13,6 +13,7 @@ from model_training.custom_datasets.formatting import DatasetEntry
 from model_training import print_rank_0
 from model_training.custom_datasets.dialogue_collator import DialogueDataCollator
 from model_training.efficiency_utils import fuse_gelu
+from model_training.models.patching import RopePatch
 from model_training.models.peft_modeling import peft_model
 from model_training.utils.utils import (
     PerDatasetSampler,
@@ -208,7 +209,7 @@ class SFTTrainer(Trainer):
         return dataloader
 
 
-def argument_parsing(notebook=False, notebook_args=None):
+def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None = None):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--configs",
@@ -413,7 +414,6 @@ def main():
     )
 
     train, evals = get_dataset(training_conf)
-
     show_dataset_stats = (training_conf.verbose or training_conf.show_dataset_stats) and (
         not training_conf.deepspeed or training_conf.local_rank == 0
     )
@@ -467,14 +467,18 @@ def main():
         sampler = None
 
     metrics, preprocess_fns = get_metrics(training_conf, tokenizer)
-
     model = get_model(training_conf, tokenizer)
+
+    superhot = RopePatch.from_config(training_conf) if training_conf.superhot else None
+    if superhot:
+        superhot.patch(model)
+
+    print(f"rope_scaling: {model.config.rope_scaling}")
+    print(f"max_position_embeddings: {model.config.max_position_embeddings}")
 
     if training_conf.peft_model:
         print("Using PEFT model")
-        model = peft_model(
-            model, peft_type=training_conf.peft_type, gradient_checkpointing=training_conf.gradient_checkpointing
-        )
+        model = peft_model(model, training_conf)
 
     if training_conf.quantization:
         import bitsandbytes  # This is noisy, so delay importing until after argument parsing so it doesn't make --help noisy
