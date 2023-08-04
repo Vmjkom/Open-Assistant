@@ -28,7 +28,7 @@ INSTRUCTION_DATASETS = {
     "oa_stackexchange": "donfu/oa-stackexchange",
     "tell_a_joke": "mikegarts/oa_tell_a_joke_20000",
     "wizardlm_70k": "ehartford/WizardLM_alpaca_evol_instruct_70k_unfiltered",
-    "finnish_instruction_qa": "/projappl/project_462000241/data/instruct_qa/instruct_qa_fi.jsonl"
+    "finnish_instruction_qa": "/flash/project_462000241/ville/instruct_qa/instruct_qa_fi.jsonl",
     "megacode": "rombodawg/MegaCodeTraining112k",
     "evol_instruct_code": "nickrosh/Evol-Instruct-Code-80k-v1",
     "evol-codealpaca-v1": "theblackcat102/evol-codealpaca-v1",
@@ -62,17 +62,15 @@ class InstructionDataset(Dataset):
             self.instruction_column = "INSTRUCTION"
             self.response_column = "RESPONSE"
         if dataset == "finnish_instruction_qa":
-            #print(f" dict path : {INSTRUCTION_DATASETS[dataset]}")
+            print(f" dict path : {INSTRUCTION_DATASETS[dataset]}")
             ds = load_dataset("json",
                               data_files=INSTRUCTION_DATASETS[dataset],
-                              cache_dir=cache_dir,
                               split=split)
         else:
             ds = load_dataset(INSTRUCTION_DATASETS[dataset], cache_dir=cache_dir, split=split)
         self.dataset = []
         num_invalid = 0
 
-        ds = load_dataset(INSTRUCTION_DATASETS[dataset], cache_dir=cache_dir, split=split, data_files=data_files)
         self.dataset: list[tuple[list[str], list[str]]] = []
 
         questions, answers = [], []
