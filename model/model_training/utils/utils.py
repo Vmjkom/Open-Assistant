@@ -123,7 +123,7 @@ class PerDatasetSampler(DistributedSampler):
                 random.shuffle(epoch_idx)
 
         # split epoch_idx in world_size chunks
-        epoch_idx = epoch_idx[self.rank : self.num_samples : self.world_size]
+        epoch_idx = epoch_idx[int(self.rank) : int(self.num_samples) : int(self.world_size)]
 
         return iter(epoch_idx)
 
