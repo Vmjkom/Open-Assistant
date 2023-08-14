@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=debug_sft_small
+#SBATCH --job-name=debug_rm_small
 #SBATCH --account=project_462000241
 #SBATCH -p dev-g
 #SBATCH -c 4
@@ -29,8 +29,8 @@ module load pytorch
 
 export TORCH_EXTENSIONS_DIR=/tmp/$USER/torch_extensions
 export CACHE=/scratch/project_462000241/$USER/cache
-export MODEL_PATH=/scratch/project_462000241/$USER/oa_models/debug
-export LOGS=/scratch/project_462000241/$USER/logs
+export MODEL_PATH=/scratch/project_462000241/$USER/oa_models/rm
+export LOGS=/pfs/lustrep2/scratch/project_462000241/$USER/logs
 
 #Compile deepspeed with torch backend to only mi250x
 export PYTORCH_ROCM_ARCH=gfx90a
@@ -44,9 +44,10 @@ export RANK=$SLURM_PROCID
 export WORLD_SIZE=$((SLURM_GPUS_ON_NODE*SLURM_NNODES))
 
 #DEBUG
-#export NCCL_DEBUG=INFO
-#export NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV
-#export TORCH_DISTRIBUTED_DEBUG=DETAIL
+CUDA_LAUNCH_BLOCKING=1
+export NCCL_DEBUG=INFO
+export NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV
+export TORCH_DISTRIBUTED_DEBUG=DETAIL
 
 export TRANSFORMERS_NO_ADVISORY_WARNINGS=1
 
@@ -55,10 +56,8 @@ export TOKENIZERS_PARALLELISM=true
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 python3 -m torch.distributed.run --standalone --nproc-per-node=$SLURM_GPUS_ON_NODE \
-        trainer_sft.py --configs gpt3-finnish-small \
-        --debug \
+        trainer_rm.py --configs defaults_rm oasst-finnish-gpt-rm \
         --cache_dir $CACHE \
         --output_dir $MODEL_PATH/$SLURM_JOB_NAME \
         --log_dir $LOGS \
         --local_rank $LOCAL_RANK \
-        --report_to tensorboard

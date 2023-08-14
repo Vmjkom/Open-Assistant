@@ -4,7 +4,7 @@ defaults_rlhf:
   batch_size: 1
   chunk_size: 1
   num_rollouts: 16
-  total_steps: 10000
+  total_steps: 1000
   datasets_extra: []
   cache_dir: /home/ubuntu/data_cache
   output_dir: model_rl
@@ -78,6 +78,42 @@ llama_rlhf:
     residual_dropout: 0.0
     use_flash_attention: true
     dtype: fp16
+
+finnish_gpt_small_rlhf:
+  dtype: bf16
+  datasets:
+    - oasst_export:
+        lang: "en"
+        input_file_path: /projappl/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+        val_split: 0.10
+        
+  rank_config:
+    is_reward_model: true
+    datasets:
+      - oasst_export:
+          lang: "en"
+          input_file_path: /projappl/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+          val_split: 0.10
+    model_name: /scratch/project_462000241/villekom/oa_models/debug/debug_sft_finnish_gpt_small
+    dtype: bf16
+    residual_dropout: 0.01
+    weight_decay: 0.0
+    use_flash_attention: false
+    batch_size: 1s
+
+  sft_config:
+    is_reward_model: false 
+    dtype: bf16
+    model_name: /scratch/project_462000241/villekom/oa_models/debug/debug_sft_finnish_gpt_small
+    batch_size: 1
+    datasets:
+      - oasst_export:
+          lang: "en"
+          input_file_path: /projappl/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+          val_split: 0.10
+      - finnish_instruction_qa:
+          val_split: 0.10
+          size: 5000
 
 debug_rlhf:
   rank_model: pythia_reward_model/checkpoint-50

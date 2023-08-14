@@ -46,6 +46,7 @@ defaults_rm:
   use_system_tag: False
   system_property_dropout: 0.5
   system_add_length: false
+  residual_dropout_lima: false
 
 oasst-rm-1-pythia-6.9b:
   is_reward_model: true
@@ -141,26 +142,26 @@ oasst-finnish-gpt-rm:
   is_reward_model: true
   datasets:
     - oasst_export:
-        lang: "en,es,de,fr"
-        hf_dataset_name: OpenAssistant/oasst1
-        val_split: 0.1
+        lang: "en"
+        input_file_path: /projappl/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+        val_split: 0.10
   use_custom_sampler: true
   sort_by_length: false
-  model_name: 
-  learning_rate: 1e-5
+  model_name: /scratch/project_462000241/villekom/oa_models/debug/debug_sft_finnish_gpt_small
+  dtype: bf16
+  learning_rate: 2e-5
   residual_dropout: 0.01
   weight_decay: 0.0
   max_length: 2048
   use_flash_attention: false
-  fused_gelu: true
+  fused_gelu: false
   warmup_steps: 50
   gradient_accumulation_steps: 1
   per_device_train_batch_size: 1
-  save_total_limit: 1
   per_device_eval_batch_size: 5
-  num_train_epochs: 2
+  save_total_limit: 1
+  num_train_epochs: 1
   eval_steps: 500
-  save_steps: 1000
 
 oasst-rm-1-pythia-1.4b:
   is_reward_model: true

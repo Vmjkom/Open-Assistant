@@ -5,20 +5,21 @@ train:
   batch_size: 18
   checkpoint_interval: 1000
   eval_interval: 250
-  pipeline: "CustomPromptPipeline"
-  trainer: "CustomPPOTrainer"
-  tracker: wandb
+  pipeline: "PromptPipeline"
+  trainer: "AcceleratePPOTrainer"
+  tracker: tensorboard
   project_name: rlhf
   entity_name: open-assistant
+  logging_dir:
 
 model:
-  model_path:
+  model_path: /scratch/project_462000241/villekom/oa_models/debug/debug_sft_finnish_gpt_small
   model_arch_type: causal
 
 tokenizer:
-  tokenizer_path:
-  truncation_side: "left" # AKo: changed this to "left", otherwise it sees only the beginning of conversations
-  padding_side: "left" # use with rotary positional embeddings
+  tokenizer_path: /scratch/project_462000241/villekom/oa_models/debug/debug_sft_finnish_gpt_small
+  truncation_side: "right"
+  padding_side: "left"
 
 optimizer:
   name: "adamw"

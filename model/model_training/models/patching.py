@@ -8,8 +8,8 @@ import torch.nn as nn
 import transformers
 from transformers import (
     AutoConfig,
-    FalconForCausalLM,
-    FalconModel,
+    #FalconForCausalLM,
+    #evaluateFalconModel,
     GPTNeoXForCausalLM,
     GPTNeoXModel,
     LlamaForCausalLM,
@@ -21,7 +21,7 @@ from transformers.models.llama.modeling_llama import (
 )
 from trlx.models.modeling_ppo import AutoModelForCausalLMWithHydraValueHead
 
-from .patching_falcon import falcon_forward_with_flash_attn
+#from .patching_falcon import falcon_forward_with_flash_attn
 from .patching_llama import llama_forward_with_flash_attn
 from .patching_neox import neox_forward_with_flash_attn
 from .reward_model import GPTNeoXRewardModel
@@ -32,8 +32,8 @@ SUPPORTED_MODELS = [
     GPTNeoXForCausalLM,
     LlamaForCausalLM,
     LlamaModel,
-    FalconForCausalLM,
-    FalconModel,
+    #FalconForCausalLM,
+    #FalconModel,
     GPTNeoXRewardModel,
     # Currently only supported by NeoX models; Will work on LLaMa models
     #AutoModelForCausalLMWithHydraValueHead,

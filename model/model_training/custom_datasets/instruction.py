@@ -28,7 +28,7 @@ INSTRUCTION_DATASETS = {
     "oa_stackexchange": "donfu/oa-stackexchange",
     "tell_a_joke": "mikegarts/oa_tell_a_joke_20000",
     "wizardlm_70k": "ehartford/WizardLM_alpaca_evol_instruct_70k_unfiltered",
-    "finnish_instruction_qa": "/flash/project_462000241/ville/instruct_qa/instruct_qa_fi.jsonl",
+    "finnish_instruction_qa": "/projappl/project_462000241/data/instruct_qa/instruct_qa_fi.jsonl",
     "megacode": "rombodawg/MegaCodeTraining112k",
     "evol_instruct_code": "nickrosh/Evol-Instruct-Code-80k-v1",
     "evol-codealpaca-v1": "theblackcat102/evol-codealpaca-v1",

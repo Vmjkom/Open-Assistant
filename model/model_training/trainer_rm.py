@@ -6,6 +6,7 @@ from typing import Callable, Literal, Optional, Sequence, Union
 
 import datasets
 import torch
+from model_training import print_rank_0
 from model_training.custom_datasets.ranking_collator import RankingDataCollator
 from model_training.efficiency_utils import fuse_gelu
 from model_training.metrics import RewardMetrics
@@ -174,7 +175,7 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
     if conf["deepspeed"]:
         conf["world_size"] = int(os.getenv("WORLD_SIZE", default="1"))
     else:
-        conf["world_size"] = 1
+        conf["world_size"] = int(os.getenv("WORLD_SIZE", default="1"))
 
     # Override config from command-line
     parser = argparse.ArgumentParser()
@@ -212,9 +213,10 @@ def main():
         learning_rate=float(training_conf.learning_rate),
         deepspeed=training_conf.deepspeed_config if training_conf.deepspeed else None,
         optim=optimizer,
-        #fp16=training_conf.dtype in ["fp16", "float16"],
-        #bf16=training_conf.dtype in ["bf16", "bfloat16"],
-        local_rank=training_conf.local_rank,
+        fp16=training_conf.dtype in ["fp16", "float16"],
+        bf16=training_conf.dtype in ["bf16", "bfloat16"],
+        local_rank=int(os.environ['SLURM_LOCALID']),
+        half_precision_backend='auto',
         gradient_checkpointing=training_conf.gradient_checkpointing,
         gradient_accumulation_steps=training_conf.gradient_accumulation_steps,
         per_device_train_batch_size=training_conf.per_device_train_batch_size,
@@ -233,6 +235,7 @@ def main():
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
         report_to="wandb" if training_conf.log_wandb else 'none',
+        dataloader_num_workers=int(os.environ['SLURM_CPUS_PER_TASK'])-1
     )
 
     tokenizer = get_tokenizer(training_conf)
@@ -242,7 +245,6 @@ def main():
     train_collate_fn = RankingDataCollator(
         tokenizer,
         max_length=training_conf.max_length,
-        pad_to_multiple_of=16,
         max_replies=training_conf.max_replies,
         use_system_tag=training_conf.use_system_tag,
         system_property_dropout=training_conf.system_property_dropout,

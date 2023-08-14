@@ -72,7 +72,7 @@ class CustomCausalLMHydraWithValueHead(AutoModelForCausalLMWithHydraValueHead):
         #     base_model.sample = funcType(sample, base_model)
 
         # model.ds_zero3 = config.ds_zero3
-        model = cls(base_model, num_layers_unfrozen=config.num_layers_unfrozen)
+        model = cls(base_model)
 
         pretrained_model_name_or_path = config.model_name
 
@@ -146,7 +146,7 @@ class CustomPPOTrainer(AcceleratePPOTrainer, AccelerateRLTrainer):
         super().__init__(*args, config=config, **kwargs)
 
         # del self.ref_model
-        self.ref_model = triton_server_ref_model()
+        #self.ref_model = triton_server_ref_model()
 
     def decode(
         self,

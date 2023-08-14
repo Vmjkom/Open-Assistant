@@ -13,8 +13,8 @@ from model_training.custom_datasets.formatting import DatasetEntry
 from model_training import print_rank_0
 from model_training.custom_datasets.dialogue_collator import DialogueDataCollator
 from model_training.efficiency_utils import fuse_gelu
-from model_training.models.patching import RopePatch
-from model_training.models.peft_modeling import peft_model
+#from model_training.models.patching import RopePatch
+#from model_training.models.peft_modeling import peft_model
 from model_training.utils.utils import (
     PerDatasetSampler,
     _strtobool,
@@ -34,7 +34,7 @@ from transformers.trainer_pt_utils import IterableDatasetShard
 from transformers.trainer_utils import seed_worker
 from transformers.training_args import OptimizerNames
 from transformers import EarlyStoppingCallback
-from transformers.utils import is_datasets_available, logging
+from transformers.utils import is_datasets_available
 
 
 def compute_metrics(eval_pred, preprocess_fns, metrics):
@@ -79,12 +79,11 @@ class EarlyStopEvalLossCallback(TrainerCallback):
         metric_qa="eval_finnish_instruction_qa_loss"
         metrics_keys = list(metrics.keys())
         metric_to_check = metrics_keys[0]
-        #print(f"Metric value {metric_value}")
+        logging.debug(f"Metric that is checked on evaluate: {metric_to_check}")
         if metric_to_check is None:
             print_rank_0(
-                f"early stopping required metric_for_best_model, but did not find {metric_to_check} so early stopping"
-                " is disabled"
-            )
+                f"early stopping required metric_for_best_model, but did not find {metric_to_check} so early stopping \
+                is disabled")
             return
 
         self.check_metric_value(args, state, control, metric_to_check)
@@ -195,6 +194,7 @@ class SFTTrainer(Trainer):
         else:
             train_sampler = self.sampler
             logging.warning("Custom sampler found!")
+        
 
         dataloader = DataLoader(
             train_dataset,
@@ -234,6 +234,7 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
     parser.add_argument("--rng_seed", type=int, help="rng seed")
     parser.add_argument("--show_dataset_stats", action="store_true", help="Show dataset stats", default=False)
     parser.add_argument("--report_to",type=str,help="The list of integrations to report the results and logs to", default='none')
+    parser.add_argument("--debug",action="store_true")
     parser.set_defaults(deepspeed=False)
 
     if notebook:
@@ -256,6 +257,10 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
         print_rank_0(f'Error: Could not find the config "{e.args[0]}" in config.yaml')
         exit(1)
 
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
     conf["wandb_entity"] = args.wandb_entity
     conf["local_rank"] = args.local_rank
     conf["deepspeed"] = args.deepspeed
@@ -269,7 +274,7 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
     if conf["deepspeed"]:
         conf["world_size"] = int(os.getenv("WORLD_SIZE", default="1"))
     else:
-        conf["world_size"] = os.environ['WORLD_SIZE']
+        conf["world_size"] = int(os.environ['WORLD_SIZE'])
 
     # Override config from command-line
     parser = argparse.ArgumentParser()
@@ -329,6 +334,7 @@ def tokenizer_sanity_check(tokenizer):
 
 def main():
     training_conf = argument_parsing()
+
     #if not training_conf.deepspeed or training_conf.local_rank == 0:
         #print_rank_0(f"trainig_conf = {training_conf}")
 
@@ -371,6 +377,10 @@ def main():
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
         report_to=training_conf.report_to,
+        dataloader_drop_last=True,
+        dataloader_num_workers=int(os.environ['SLURM_CPUS_PER_TASK'])-1,
+        load_best_model_at_end=True,
+        metric_for_best_model=""
     )
 
     json_args = args.to_json_string()
@@ -469,16 +479,16 @@ def main():
     metrics, preprocess_fns = get_metrics(training_conf, tokenizer)
     model = get_model(training_conf, tokenizer)
 
-    superhot = RopePatch.from_config(training_conf) if training_conf.superhot else None
-    if superhot:
-        superhot.patch(model)
+#    superhot = RopePatch.from_config(training_conf) if training_conf.superhot else None
+#    if superhot:
+#        superhot.patch(model)
 
-    print(f"rope_scaling: {model.config.rope_scaling}")
-    print(f"max_position_embeddings: {model.config.max_position_embeddings}")
+#    print(f"rope_scaling: {model.config.rope_scaling}")
+#    print(f"max_position_embeddings: {model.config.max_position_embeddings}")
 
-    if training_conf.peft_model:
-        print("Using PEFT model")
-        model = peft_model(model, training_conf)
+    #if training_conf.peft_model:
+    #    print("Using PEFT model")
+    #    model = peft_model(model, training_conf)
 
     if training_conf.quantization:
         import bitsandbytes  # This is noisy, so delay importing until after argument parsing so it doesn't make --help noisy
@@ -523,7 +533,7 @@ def main():
         compute_metrics=partial(compute_metrics, metrics=metrics, preprocess_fns=preprocess_fns),
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
     )
-    #trainer.add_callback(EarlyStoppingCallback(3, 0.0))
+    trainer.add_callback(EarlyStopEvalLossCallback(3, 0.0))
     trainer.train(resume_from_checkpoint=training_conf.resume_from_checkpoint)
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)

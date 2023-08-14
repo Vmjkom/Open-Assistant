@@ -312,7 +312,6 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
         dtype = torch.float16
     elif conf.dtype in ["bf16", "bfloat16"]:
         dtype = torch.bfloat16
-
     if conf.is_reward_model:
         if "pythia" in conf.model_name:
             model = GPTNeoXRewardModel.from_pretrained(conf.model_name, cache_dir=conf.cache_dir, torch_dtype=dtype)
@@ -325,21 +324,15 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
                 conf.model_name, cache_dir=conf.cache_dir, num_labels=1, torch_dtype=dtype
             )
     if not conf.is_reward_model:
-        if conf.peft_type is not None and conf.peft_type == "prefix-tuning" and "llama" in conf.model_name:
-            model = LlamaForCausalLM.from_pretrained(conf.model_name, cache_dir=conf.cache_dir, torch_dtype=dtype)
-        else:
-            model = get_specific_model(
+        model = get_specific_model(
                 conf.model_name,
-                cache_dir=conf.cache_dir,
-                quantization=conf.quantization,
-                seq2seqmodel=conf.seq2seqmodel,
                 without_head=conf.is_reward_model,
                 torch_dtype=dtype,
             )
 
         n_embs = model.get_input_embeddings().num_embeddings
-        if len(tokenizer) != n_embs and check_freeze_layer:
-            assert not conf.freeze_layer, "Cannot change the number of embeddings if the model is frozen."
+        #if len(tokenizer) != n_embs and check_freeze_layer:
+        #    assert not conf.freeze_layer, "Cannot change the number of embeddings if the model is frozen."
 
         if len(tokenizer) != n_embs or pad_vocab_size_to_multiple_of:
             p = pad_vocab_size_to_multiple_of
@@ -348,19 +341,19 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
                 print("Resizing embeddings to", target_size)
             model.resize_token_embeddings(target_size)
 
-        if conf.freeze_layer:
-            model = freeze_top_n_layers(model, conf.freeze_layer)
+        #if conf.freeze_layer:
+        #    model = freeze_top_n_layers(model, conf.freeze_layer)
 
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([p.numel() for p in model_parameters])
     print_rank_0("Number of trainable parameters: {}M".format(int(params / 1e6)))
 
-    patch_model(
-        model,
-        resid_pdrop=conf.residual_dropout,
-        flash_attention=conf.use_flash_attention,
-        residual_dropout_lima=conf.residual_dropout_lima,
-    )
+    #patch_model(
+    #    model,
+    #    resid_pdrop=conf.residual_dropout,
+    #    flash_attention=conf.use_flash_attention,
+    #    residual_dropout_lima=conf.residual_dropout_lima,
+    #)
 
     return model
 

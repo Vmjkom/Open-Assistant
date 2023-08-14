@@ -30,3 +30,4 @@ backend/openapi.json
 model/*.err
 model/*.out
 model/model_training/muistiinpanot.txt
+model/model_training/core

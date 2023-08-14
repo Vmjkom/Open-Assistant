@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=rm_train
-#SBATCH --account=project_462000119
-#SBATCH -p small-g
-#SBATCH -c 7
+#SBATCH --account=project_462000241
+#SBATCH -p dev-g
+#SBATCH -c 4
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=50G
-#SBATCH -t 02:00:00
+#SBATCH -t 01:00:00
 #SBATCH -o logs/%x-%j.out
 #SBATCH -e logs/%x-%j.err
 
@@ -17,7 +17,7 @@ ln -s $SLURM_JOB_NAME-$SLURM_JOB_ID.out logs/latest.out
 ln -s $SLURM_JOB_NAME-$SLURM_JOB_ID.err logs/latest.err
 
 export CACHE=/scratch/project_462000241/$USER/cache
-export MODEL_PATH=/scratch/project_462000241/$USER/oa_models
+export MODEL_PATH=/scratch/project_462000241/$USER/oa_models/rm
 export LOGS=/pfs/lustrep2/scratch/project_462000241/$USER/logs
 
 module --force purge

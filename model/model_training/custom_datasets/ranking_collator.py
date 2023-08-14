@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Union
 
+from model_training import print_rank_0
 from model_training.custom_datasets.formatting import DatasetEntryRm
 from transformers.tokenization_utils_base import BatchEncoding, PaddingStrategy, PreTrainedTokenizerBase
 
@@ -88,15 +89,13 @@ class RankingDataCollator:
 
             n_samples += len(tokenized)
             cu_lens.append(n_samples)
-
+        #print_rank_0(f"Examples \n {examples}")
         batch = self.tokenizer.pad(
             flat_tokenized,
             padding=self.padding,
-            max_length=self.max_length,
             pad_to_multiple_of=self.pad_to_multiple_of,
             return_tensors="pt",
         )
-
         if "token_type_ids" in batch:
             batch.pop("token_type_ids")
         return batch, cu_lens
