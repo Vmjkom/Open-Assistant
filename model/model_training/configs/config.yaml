@@ -187,7 +187,7 @@ oasst_finnish:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_2007628/ville/data/finnish_oasst1_ready_trees_no_code.jsonl
+        input_file_path: /scratch/project_2007628/villekom/data/finnish_oasst1_ready_trees_no_code.jsonl
         val_split: 0.10
   sort_by_length: false
   use_custom_sampler: false
@@ -1069,6 +1069,7 @@ llama2_13b_orcacode2_8k:
 
 gpt3-finnish-small:
   model_name: TurkuNLP/gpt3-finnish-small
+  dtype: float32
   gradient_checkpointing: True
   gradient_accumulation_steps: 12
   per_device_train_batch_size: 4
@@ -1078,8 +1079,29 @@ gpt3-finnish-small:
   verbose: true
   max_length: 2048
   eval_max_length: 2048
-  save_strategy: 'epoch'
+  save_strategy: epoch
   num_train_epochs: 2
   save_total_limit: 1
   system_prefix: "Olet kielimalli, joka haluaa olla avuksi vastaten mahdollisimman ytimekkäästi"
   use_system_prefix: true
+
+gpt3-finnish-xl:
+  learning_rate: 1e-5
+  model_name: TurkuNLP/gpt3-finnish-xl
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 16
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  log_wandb: false
+  warmup_steps: 200
+  eval_steps: 50
+  save_strategy: epoch
+  save_total_limit: 1
+  fuse_gelu: false
+  verbose: true
+  num_train_epochs: 1
+  max_length: 2048
+  eval_max_length: 2048
+  dtype: bf16
+  system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
+  use_system_prefix: false

@@ -295,7 +295,7 @@ def main():
         save_steps=training_conf.save_steps,
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
-        report_to="wandb" if training_conf.log_wandb else None,
+        report_to="wandb" if training_conf.log_wandb else "none",
     )
 
     if not training_conf.log_wandb:

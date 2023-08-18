@@ -8,7 +8,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import datasets
 import torch
 
-# from model_training.custom_datasets.formatting import DatasetEntry
+import numpy as np
+from model_training.custom_datasets.formatting import DatasetEntry
+from model_training import print_rank_0
 from model_training.custom_datasets.dialogue_collator import DialogueDataCollator
 from model_training.efficiency_utils import fuse_gelu
 from model_training.models.patching import RopePatch
@@ -27,11 +29,12 @@ from model_training.utils.utils import (
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
-from transformers import PreTrainedModel, Trainer, TrainingArguments
+from transformers import PreTrainedModel, Trainer, TrainingArguments, TrainerCallback, EarlyStoppingCallback
 from transformers.trainer_pt_utils import IterableDatasetShard
 from transformers.trainer_utils import seed_worker
 from transformers.training_args import OptimizerNames
-from transformers.utils import is_datasets_available
+from transformers import EarlyStoppingCallback
+from transformers.utils import is_datasets_available, logging
 
 
 def compute_metrics(eval_pred, preprocess_fns, metrics):
@@ -47,6 +50,46 @@ def preprocess_logits_for_metrics(logits, labels):
     pred_ids = torch.argmax(logits, dim=-1)
     return pred_ids
 
+
+class EarlyStopEvalLossCallback(TrainerCallback):
+
+
+    def __init__(self, early_stopping_patience: int = 1, early_stopping_threshold: Optional[float] = 0.0):
+        self.early_stopping_patience = early_stopping_patience
+        self.early_stopping_threshold = early_stopping_threshold
+        # early_stopping_patience_counter denotes the number of times validation metrics failed to improve.
+        self.early_stopping_patience_counter = 0
+
+    """
+    If evaluation loss from oasst data stops improving past a 2
+    """
+    def check_metric_value(self, args, state, control, metric_value):
+        # best_metric is set by code for load_best_model
+        operator = np.greater if args.greater_is_better else np.less
+        if state.best_metric (
+            operator(metric_value, state.best_metric)
+            and abs(metric_value - state.best_metric) > self.early_stopping_threshold
+        ):
+            self.early_stopping_patience_counter = 0
+        else:
+            self.early_stopping_patience_counter += 1
+
+    def on_evaluate(self, args, state, control, metrics, **kwargs):
+        metric_oasst= "eval_oasst_export_loss"
+        metric_qa="eval_finnish_instruction_qa_loss"
+        metrics_keys = list(metrics.keys())
+        metric_to_check = metrics_keys[0]
+        #print(f"Metric value {metric_value}")
+        if metric_to_check is None:
+            print_rank_0(
+                f"early stopping required metric_for_best_model, but did not find {metric_to_check} so early stopping"
+                " is disabled"
+            )
+            return
+
+        self.check_metric_value(args, state, control, metric_to_check)
+        if self.early_stopping_patience_counter >= self.early_stopping_patience:
+            control.should_training_stop = True
 
 class SFTTrainer(Trainer):
     def __init__(
@@ -189,6 +232,7 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
     parser.add_argument("--resume_from_checkpoint", action="store_true", help="Resume from last saved checkpoint")
     parser.add_argument("--rng_seed", type=int, help="rng seed")
     parser.add_argument("--show_dataset_stats", action="store_true", help="Show dataset stats", default=False)
+    parser.add_argument("--report_to",type=str,help="The list of integrations to report the results and logs to", default='none')
     parser.set_defaults(deepspeed=False)
 
     if notebook:
@@ -208,13 +252,14 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
             else:
                 conf.update(configs[name])
     except KeyError as e:
-        print(f'Error: Could not find the config "{e.args[0]}" in config.yaml')
+        print_rank_0(f'Error: Could not find the config "{e.args[0]}" in config.yaml')
         exit(1)
 
     conf["wandb_entity"] = args.wandb_entity
     conf["local_rank"] = args.local_rank
     conf["deepspeed"] = args.deepspeed
     conf["resume_from_checkpoint"] = args.resume_from_checkpoint
+    conf["report_to"] = args.report_to
     if args.rng_seed is not None:
         conf["rng_seed"] = args.rng_seed
     conf["show_dataset_stats"] = args.show_dataset_stats
@@ -223,7 +268,7 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
     if conf["deepspeed"]:
         conf["world_size"] = int(os.getenv("WORLD_SIZE", default="1"))
     else:
-        conf["world_size"] = 1
+        conf["world_size"] = os.environ['WORLD_SIZE']
 
     # Override config from command-line
     parser = argparse.ArgumentParser()
@@ -239,13 +284,13 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
 
 
 def tokenizer_sanity_check(tokenizer):
-    print("Tokenizer sanity check:")
-    print(f"Type: {type(tokenizer).__name__}")
+    print_rank_0("Tokenizer sanity check:")
+    print_rank_0(f"Type: {type(tokenizer).__name__}")
 
-    print("special_tokens_map:", tokenizer.special_tokens_map)
+    print_rank_0(f"special_tokens_map: {tokenizer.special_tokens_map}")
 
-    print(f"bos_token='{tokenizer.bos_token}', bos_token_id={tokenizer.bos_token_id}")
-    print(f"eos_token='{tokenizer.eos_token}', eos_token_id={tokenizer.eos_token_id}")
+    print_rank_0(f"bos_token={tokenizer.bos_token} bos_token_id={tokenizer.bos_token_id}")
+    print_rank_0(f"eos_token={tokenizer.eos_token} eos_token_id={tokenizer.eos_token_id}")
 
     from model_training.custom_datasets.formatting import QA_SPECIAL_TOKENS, create_dataset_entry_qa
 
@@ -262,7 +307,7 @@ def tokenizer_sanity_check(tokenizer):
 
     prompter_token_id = tokenizer.convert_tokens_to_ids(QA_SPECIAL_TOKENS["Question"])
     assistant_token_id = tokenizer.convert_tokens_to_ids(QA_SPECIAL_TOKENS["Answer"])
-    print(f"{prompter_token_id=}, {assistant_token_id=}")
+    print_rank_0(f"{prompter_token_id=}, {assistant_token_id=}")
 
     tr = tokenizer(in_text, max_length=1024, pad_to_max_length=False, truncation=True)
 
@@ -273,12 +318,12 @@ def tokenizer_sanity_check(tokenizer):
             i += 1
         message_indices.append(i)
 
-    print("encoding result:", tr)
+    print_rank_0(f"encoding result:, {tr}")
     for i, xs in enumerate(tr.input_ids):
         decoded = tokenizer.decode(xs)
-        print(f'{i}: {xs} -> "{decoded}"')
+        print_rank_0(f'{i}: {xs} -> "{decoded}"')
 
-    print("message_indices:", message_indices)
+    print_rank_0(f"message_indices: {message_indices}")
 
 
 def main():
@@ -322,7 +367,7 @@ def main():
         save_steps=training_conf.save_steps,
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
-        report_to="wandb" if training_conf.log_wandb else None,
+        report_to=training_conf.report_to,
     )
 
     init_rng(training_conf)
@@ -367,7 +412,7 @@ def main():
         not training_conf.deepspeed or training_conf.local_rank == 0
     )
     if show_dataset_stats:
-        print("Training dataset sizes (before sampling):")
+        print_rank_0("Training dataset sizes (before sampling):")
         total = len(train)
         for d in train.datasets:
             if isinstance(d, Subset):
@@ -378,21 +423,21 @@ def main():
                 name = type(d).__name__
                 if hasattr(d, "name"):
                     name += f" ({d.name})"
-            print(f"{name}: {len(d)} ({len(d) / total:.2%})")
+            print_rank_0(f"{name}: {len(d)} ({len(d) / total:.2%})")
 
             # ensure that all entries can be formatted
             # for x in d:
             #     if isinstance(x, DatasetEntry):
             #         x.get_formatted("sft", "<eos>")
 
-        print(f"\nTotal train: {total}")
-        print("-" * 80)
-        print("Evaluation set sizes:")
+        print_rank_0(f"\nTotal train: {total}")
+        print_rank_0("-" * 80)
+        print_rank_0("Evaluation set sizes:")
         total_eval = sum(len(x) for x in evals.values())
         for k, d in evals.items():
-            print(f"{k}: {len(d)} ({len(d) / total_eval:.2%})")
-        print(f"\nTotal eval: {total_eval}")
-        print("-" * 80)
+            print_rank_0(f"{k}: {len(d)} ({len(d) / total_eval:.2%})")
+        print_rank_0(f"\nTotal eval: {total_eval}")
+        print_rank_0("-" * 80)
 
     if training_conf.use_custom_sampler:
         samples_length = None
@@ -422,8 +467,8 @@ def main():
     if superhot:
         superhot.patch(model)
 
-    print(f"rope_scaling: {model.config.rope_scaling}")
-    print(f"max_position_embeddings: {model.config.max_position_embeddings}")
+    #print(f"rope_scaling: {model.config.rope_scaling}")
+    #print(f"max_position_embeddings: {model.config.max_position_embeddings}")
 
     if training_conf.peft_model:
         print("Using PEFT model")
@@ -473,7 +518,7 @@ def main():
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
     )
     trainer.train(resume_from_checkpoint=training_conf.resume_from_checkpoint)
-    trainer.save_model()
+    trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
 
 

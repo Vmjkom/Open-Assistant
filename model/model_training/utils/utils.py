@@ -10,6 +10,7 @@ import evaluate
 import torch
 import transformers
 import yaml
+from model_training import is_last_rank, print_rank_0
 from model_training.custom_datasets import get_one_dataset
 from model_training.custom_datasets.formatting import QA_SPECIAL_TOKENS
 from model_training.models import freeze_top_n_layers, get_specific_model
@@ -31,7 +32,7 @@ def _strtobool(x):
 def init_rng(conf: argparse.Namespace) -> None:
     seed = conf.rng_seed
     if seed is not None:
-        print(f"RNG seed: {seed}")
+        print_rank_0(f"RNG seed: {seed}")
         transformers.set_seed(seed)
 
 
@@ -139,7 +140,7 @@ def get_dataset_fractions(conf, dataset_sizes: List[int], verbose: bool = False)
     """Calculate fraction of each dataset to use per epoch when sub-sampling"""
 
     if verbose:
-        print("Creating sampler for datasets:")
+        print_rank_0("Creating sampler for datasets:")
 
     fractions = []
     for i, data_config in enumerate(conf):
@@ -184,6 +185,7 @@ TOKENIZER_CONFIGS = {
     "deberta-v3": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
     "bloom": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>", "<s>")),
     "electra": TokenizerConfig(special_tokens=SpecialTokens("[PAD]", "[SEP]", sep_token="[CLS]")),
+    "finnish": TokenizerConfig(special_tokens=SpecialTokens("<pad>", "</s>",sep_token="<|endoftext|>")),
     "falcon": TokenizerConfig(
         special_tokens=SpecialTokens("<|endoftext|>", "<|endoftext|>", sep_token="<|endoftext|>")
     ),
@@ -197,6 +199,9 @@ def match_tokenizer_name(model_name: str) -> TokenizerConfig:
     i.e. model_name `Salesforce/codegen-2B-multi` has config name `codegen`
     """
     tokenizer_config_matches = [config for name, config in TOKENIZER_CONFIGS.items() if name in model_name]
+    print()
+    if is_last_rank():
+        print("Tokenizer configs",tokenizer_config_matches)
     if not tokenizer_config_matches:
         raise ValueError(f"Cannot find any tokeniser configuration to match {model_name=}")
     elif 1 < len(tokenizer_config_matches):
@@ -213,9 +218,9 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
         tokenizer_name = "cerebras/Cerebras-GPT-13B"
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name, cache_dir=conf.cache_dir)
-
+    print_rank_0(f"Tokenizer: {tokenizer}")
     tokenizer_config = match_tokenizer_name(conf.model_name)
-
+    print_rank_0(f"Tokenizer config: {tokenizer_config} ")
     if hasattr(conf, "per_digit_tokens") and conf.per_digit_tokens:
         tokenizer._tokenizer.pre_processor = pre_tokenizers.Digits(True)
 
@@ -239,7 +244,9 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
     additional_special_tokens = list(set(additional_special_tokens + list(QA_SPECIAL_TOKENS.values())))
 
     tokenizer.add_special_tokens({"additional_special_tokens": additional_special_tokens})
-
+    print_rank_0(f"additional Special tokens: {additional_special_tokens}")
+    print_rank_0(f"Tokenizer special tokens: {tokenizer_config.special_tokens}")
+    print_rank_0(f"Tokenizer: {tokenizer}")
     return tokenizer
 
 
@@ -336,7 +343,8 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
         if len(tokenizer) != n_embs or pad_vocab_size_to_multiple_of:
             p = pad_vocab_size_to_multiple_of
             target_size = len(tokenizer) if not p else math.ceil(len(tokenizer) / p) * p
-            print("Resizing embeddings to", target_size)
+            if is_last_rank():
+                print("Resizing embeddings to", target_size)
             model.resize_token_embeddings(target_size)
 
         if conf.freeze_layer:
@@ -344,7 +352,7 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
 
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([p.numel() for p in model_parameters])
-    print("Number of trainable parameters: {}M".format(int(params / 1e6)))
+    print_rank_0("Number of trainable parameters: {}M".format(int(params / 1e6)))
 
     patch_model(
         model,

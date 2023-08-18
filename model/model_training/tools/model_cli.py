@@ -17,8 +17,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--max_new_tokens", type=int, default=200)
-    parser.add_argument("--top_k", type=int, default=None)
-    parser.add_argument("--top_p", type=int, default=0.9)
+    parser.add_argument("--top_k", type=int, default=50)
+    parser.add_argument("--top_p", type=int, default=0.85)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--do-sample", type=_strtobool, default=True)
     parser.add_argument("--format", type=str, default="v2")
@@ -33,10 +33,11 @@ if __name__ == "__main__":
         print("Loading from", args.load_checkpoint)
         # "ckpts_save/best_checkpoint/pytorch_model/mp_rank_00_model_states.pt"
         ckpt = torch.load(args.load_checkpoint)
-        import IPython
+        print("ckpt",ckpt.items())
+        #import IPython
 
-        IPython.embed()
-        model = get_specific_model(args.model_path, torch_dtype=torch.float16, cache_dir=args.cache_dir)
+        #IPython.embed()
+        model = get_specific_model(args.model_path, cache_dir=args.cache_dir)
 
         base_dict = {k[11:]: v for k, v in ckpt["module"].items() if not k.startswith("base_model.transformer")}
         # base_dict = {k[11:]: v for k, v in ckpt['module'].items()}
