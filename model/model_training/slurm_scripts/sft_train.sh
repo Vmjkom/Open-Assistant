@@ -2,9 +2,9 @@
 #SBATCH --job-name=debug_sft_train
 #SBATCH --account=project_2007628
 #SBATCH -p gputest
-#SBATCH -c 2
+#SBATCH --cpus-per-task=4
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:v100:1
+#SBATCH --gres=gpu:v100:4
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=50G
 #SBATCH -t 0:15:00
@@ -25,6 +25,7 @@ export MODEL_PATH=/scratch/project_2007628/villekom/oa_models
 #DISTRIBUTED
 export LOCAL_RANK=$SLURM_LOCALID
 export RANK=$SLURM_PROCID
+export WORLD_SIZE=$((SLURM_GPUS_ON_NODE*SLURM_NNODES))
 
 #DEBUG
 export NCCL_DEBUG=INFO
@@ -35,7 +36,7 @@ export TORCH_DISTRIBUTED_DEBUG=DETAIL
 module purge
 module load python-data
 
-srun python3 -m torch.distributed.run --standalone --nproc-per-node=$SLURM_GPUS_ON_NODE trainer_sft.py \
+srun -l python3 -m torch.distributed.run --standalone --nproc-per-node=$SLURM_GPUS_ON_NODE trainer_sft.py \
         --configs gpt3-finnish-small oasst_finnish \
         --cache_dir $CACHE \
         --output_dir $MODEL_PATH/$SLURM_JOB_NAME \

@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 import numpy as np
 import torch
+from model_training import print_rank_0
 from model_training.custom_datasets.formatting import (
     QA_SPECIAL_TOKENS,
     DatasetEntryLm,
@@ -205,5 +206,5 @@ class DialogueDataCollator:
             [F.pad(torch.tensor(x), (0, dim - len(x)), value=False) for x in label_masks]
         )
         batch["targets"] = torch.roll(batch.input_ids, -1, -1)
-
+        #print_rank_0(f"Batch decoded {self.tokenizer.batch_decode(batch['input_ids'])}")
         return batch
