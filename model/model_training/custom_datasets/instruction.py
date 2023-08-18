@@ -29,6 +29,7 @@ INSTRUCTION_DATASETS = {
     "tell_a_joke": "mikegarts/oa_tell_a_joke_20000",
     "wizardlm_70k": "ehartford/WizardLM_alpaca_evol_instruct_70k_unfiltered",
     "megacode": "rombodawg/MegaCodeTraining112k",
+    "megacode2": "rombodawg/LosslessMegaCodeTrainingV2_1m_Evol_Uncensored",
     "evol_instruct_code": "nickrosh/Evol-Instruct-Code-80k-v1",
     "evol-codealpaca-v1": "theblackcat102/evol-codealpaca-v1",
     "cot_submix_original": "conceptofmind/cot_submix_original",
@@ -58,6 +59,10 @@ class InstructionDataset(Dataset):
             self.instruction_column = "prompt"
             self.response_column = "completion"
             data_files = "RombosCodeTraining112k.json"
+        elif dataset == "megacode2":
+            self.instruction_column = "USER"
+            self.response_column = "ASSISTANT"
+            data_files = "DeDuped_LosslessMegaCodeTrainingV2_942k_Evol_Uncensored.json"
         else:
             self.instruction_column = "INSTRUCTION"
             self.response_column = "RESPONSE"
@@ -128,3 +133,32 @@ class InstructionDataset(Dataset):
             answers=answers,
             lang=lang,
         )
+
+
+RAG_DATASETS = {
+    "multi-chapter-summaries": "shahules786/Multi-chapter-summaries",
+}
+
+
+class RAGDataset(Dataset):
+    def __init__(
+        self,
+        dataset,
+        split: str = "train",
+        cache_dir: str = ".cache/",
+    ):
+        if dataset not in RAG_DATASETS.keys():
+            raise ValueError(f"Invalid dataset {dataset}")
+
+        if dataset == "multi-chapter-summaries":
+            self.prompt, self.context, self.response = "prompt", "context", "summary"
+
+        self.dataset = load_dataset(RAG_DATASETS[dataset], cache_dir=cache_dir)[split]
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        prompt, context, response = [self.dataset[idx][key] for key in [self.prompt, self.context, self.response]]
+
+        return create_dataset_entry_qa(mode="sft", questions=[prompt + context], answers=[response])

@@ -41,7 +41,7 @@ tests = [
 ]
 
 [tool.setuptools]
-py-modules = ["model_training"]
+packages = ["model_training"]
 
 [tool.black]
 line-length = 120
