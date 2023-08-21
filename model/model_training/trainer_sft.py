@@ -34,7 +34,7 @@ from transformers.trainer_pt_utils import IterableDatasetShard
 from transformers.trainer_utils import seed_worker
 from transformers.training_args import OptimizerNames
 from transformers import EarlyStoppingCallback
-from transformers.utils import is_datasets_available, logging
+from transformers.utils import is_datasets_available
 
 
 def compute_metrics(eval_pred, preprocess_fns, metrics):
@@ -267,8 +267,8 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
     # get the world size in deepspeed
     if conf["deepspeed"]:
         conf["world_size"] = int(os.getenv("WORLD_SIZE", default="1"))
-    else:
-        conf["world_size"] = os.environ['WORLD_SIZE']
+    else: #Use torch without deepspeed
+        conf["world_size"] = int(os.environ['WORLD_SIZE'])
 
     # Override config from command-line
     parser = argparse.ArgumentParser()
@@ -368,6 +368,7 @@ def main():
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
         report_to=training_conf.report_to,
+        dataloader_drop_last=True
     )
 
     init_rng(training_conf)

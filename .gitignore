@@ -25,3 +25,4 @@ backend/openapi.json
 
 # JetBrains PyCharm:
 .idea/
+model/model_training/logs/latest.out

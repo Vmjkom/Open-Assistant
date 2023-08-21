@@ -33,7 +33,7 @@ INSTRUCTION_DATASETS = {
     "evol_instruct_code": "nickrosh/Evol-Instruct-Code-80k-v1",
     "evol-codealpaca-v1": "theblackcat102/evol-codealpaca-v1",
     "cot_submix_original": "conceptofmind/cot_submix_original",
-    "finnish_instruct_qa": "/scratch/project_2007628/villekom/data/instruct_qa_fi.jsonl"
+    "finnish_instruction_qa": "/scratch/project_2007628/villekom/data"
 }
 
 
@@ -52,6 +52,7 @@ class InstructionDataset(Dataset):
         elif dataset == "finnish_instruction_qa":
             self.instruction_column = "instruction"
             self.response_column = "response"
+            data_files = "instruct_qa_fi.jsonl"
         elif dataset == "cot_submix_original":
             self.instruction_column = "inputs"
             self.response_column = "targets"
