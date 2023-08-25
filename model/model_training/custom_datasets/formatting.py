@@ -76,7 +76,7 @@ class Utterance(BaseModel):
 
         # ensure that potentially multi-line conext field comes last
         if self.context:
-            properties.append(("konteksti", self.context))
+            properties.append(("context", self.context))
 
         fragments: list[str] = []
         for k, v in properties:

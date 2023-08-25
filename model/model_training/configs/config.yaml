@@ -1088,11 +1088,18 @@ gpt3-finnish-small:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_2007628/villekom/data/finnish_oasst1_ready_trees_no_code.jsonl
-        val_split: 0.10
+        input_file_path: /scratch/project_2007628/villekom/data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
+        val_split: 0.05
     - finnish_instruction_qa:
         val_split: 0.10
         fraction: 0.05
+    - dolly15k_fi:
+        size: 5000
+        val_split: 0.05
+        max_val_set: 300
+    - finnish_natural_instructions:
+        val_split: 0.05
+        size: 5000
 
 gpt3-finnish-xl:
   learning_rate: 1e-5

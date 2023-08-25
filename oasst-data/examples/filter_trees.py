@@ -1,4 +1,5 @@
 import argparse
+import re
 
 from oasst_data import read_message_trees, write_message_trees
 from oasst_data.schemas import ExportMessageTree
@@ -37,14 +38,17 @@ def main():
 
     states = args.states.split(",")
     allow_synth = args.allow_synth
+    code_pattern = re.compile(r'`{3}(.*?)`{3}', re.DOTALL)
 
     print(f"Reading: {args.input_file_name}")
     for message_tree in read_message_trees(args.input_file_name):
         msgs = []
         visit_messages_depth_first(message_tree.prompt, msgs.append)
+        
         if message_tree.tree_state in states:
             if allow_synth or not any(x.synthetic for x in msgs):
-                trees.append(message_tree)
+                if not any(re.search(code_pattern, m.text) for m in msgs):
+                    trees.append(message_tree)
 
     print(f"Found {len(trees)} matching trees.")
 
