@@ -31,3 +31,5 @@ model/*.err
 model/*.out
 model/model_training/muistiinpanot.txt
 model/model_training/core
+model/model_training/logs/*
+model/model_training/logs/latest.out
