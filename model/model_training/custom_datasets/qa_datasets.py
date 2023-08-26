@@ -599,6 +599,41 @@ class DatabricksDolly15k(Dataset):
     def __getitem__(self, index: int) -> DatasetEntry:
         dialogue = self.rows[index]
         return dialogue
+    
+class DatabricksDolly15k_fi(Dataset):
+    def __init__(self, cache_dir: str | Path, mode: str = "sft") -> None:
+        super().__init__()
+        self.rows = []
+        self.citation_regex = re.compile(r"\[[a-zA-Z]\]")  # removes citations in the form of e.g. [a] or [A]
+        if mode not in ("sft", "rl"):
+            raise NotImplementedError(f"Currently only the modes 'sft' and 'rl' are implemented. Received {mode}.")
+        self.mode = mode
+        data = load_dataset("Villekom/oa_dolly_15k_fi")
+        for line in data['train']:
+            if (c := self._process_instruction(line)) is not None:
+                self.rows.append(c)
+
+    def _process_instruction(self, row: dict[str, str]) -> DatasetEntry | None:
+        if row["METADATA"]["CONTEXT"] is None:
+            row["METADATA"]["CONTEXT"] = ""
+        context = re_reference_remove.sub("", row["METADATA"]["CONTEXT"])
+        # further remove references
+        context = context.replace("[citation needed]", "")
+        context = self.citation_regex.sub("", context)
+        if _filter_by_words(row["INSTRUCTION"]) and _filter_by_words(row["RESPONSE"]):
+            return create_dataset_entry_qa(
+                mode=self.mode,
+                questions=[row["INSTRUCTION"]],
+                answers=[row["RESPONSE"]],
+                context=context,
+            )
+
+    def __len__(self) -> int:
+        return len(self.rows)
+
+    def __getitem__(self, index: int) -> DatasetEntry:
+        dialogue = self.rows[index]
+        return dialogue
 
 
 class AlpacaGpt4(Dataset):

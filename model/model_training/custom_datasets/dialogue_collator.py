@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 import numpy as np
 import torch
+from model_training import print_rank_0
 from model_training.custom_datasets.formatting import (
     QA_SPECIAL_TOKENS,
     DatasetEntryLm,
@@ -26,7 +27,7 @@ class DialogueDataCollator:
     max_length: Optional[int] = None
     mix_length_threshold: Optional[int] = 256
     mix_probability: Optional[float] = 0.6
-    pad_to_multiple_of: Optional[int] = None
+    pad_to_multiple_of: Optional[int] = 16
     samples_mixing: Optional[bool] = False
     random_offset_probability: Optional[float] = 0.5
     label_masking: bool = True
@@ -35,6 +36,7 @@ class DialogueDataCollator:
     use_system_tag: bool = False
     system_property_dropout: float = 0.5
     system_add_length: bool = True
+    print_batch: bool = False
 
     def __post_init__(self):
         assert self.tokenizer.eos_token
@@ -78,7 +80,10 @@ class DialogueDataCollator:
             truncation=truncation,
             padding=False,
         )
-
+        if len(flatten_message['input_ids']) > self.tokenizer.model_max_length:
+            print_rank_0(f"Flatten message that is too long {self.tokenizer.decode(flatten_message['input_ids'], clean_up_tokenization_spaces=False)}")
+            self.print_batch = True
+            
         if pretrain_dataset:
             label_mask = np.ones(len(flatten_message.input_ids), dtype=bool)
             return flatten_message, label_mask, 0
@@ -205,5 +210,7 @@ class DialogueDataCollator:
             [F.pad(torch.tensor(x), (0, dim - len(x)), value=False) for x in label_masks]
         )
         batch["targets"] = torch.roll(batch.input_ids, -1, -1)
-
+        if self.print_batch:
+            print_rank_0(f"Batch decoded {self.tokenizer.batch_decode(batch['input_ids'],clean_up_tokenization_spaces=False)}")
+            self.print_batch = False
         return batch

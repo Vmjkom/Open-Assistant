@@ -378,9 +378,7 @@ def main():
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
         report_to=training_conf.report_to,
         dataloader_drop_last=True,
-        dataloader_num_workers=int(os.environ['SLURM_CPUS_PER_TASK'])-1,
-        load_best_model_at_end=True,
-        metric_for_best_model=""
+        dataloader_num_workers=int(os.environ['SLURM_CPUS_PER_TASK'])-1
     )
 
     json_args = args.to_json_string()
@@ -533,7 +531,7 @@ def main():
         compute_metrics=partial(compute_metrics, metrics=metrics, preprocess_fns=preprocess_fns),
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
     )
-    trainer.add_callback(EarlyStopEvalLossCallback(3, 0.0))
+    #trainer.add_callback(EarlyStopEvalLossCallback(3, 0.0))
     trainer.train(resume_from_checkpoint=training_conf.resume_from_checkpoint)
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
