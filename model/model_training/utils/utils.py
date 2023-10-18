@@ -5,6 +5,7 @@ import random
 from distutils.util import strtobool
 from pathlib import Path
 from typing import List, NamedTuple
+import logging
 
 import evaluate
 import torch
@@ -190,6 +191,7 @@ TOKENIZER_CONFIGS = {
         special_tokens=SpecialTokens("<|endoftext|>", "<|endoftext|>", sep_token="<|endoftext|>")
     ),
     "LLongMA": TokenizerConfig(special_tokens=SpecialTokens("</s>", "</s>", sep_token="<s>")),
+    "gpt3-fin-eng-code": TokenizerConfig(special_tokens=SpecialTokens("<pad>","</s>",sep_token="</s>")),
 }
 
 
@@ -217,7 +219,6 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
     if "cerebras" in conf.model_name:
         # Only 13B has a tokenizer available on HF
         tokenizer_name = "cerebras/Cerebras-GPT-13B"
-
     tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name, cache_dir=conf.cache_dir)
     print_rank_0(f"Tokenizer: {tokenizer}")
     tokenizer_config = match_tokenizer_name(conf.model_name)
@@ -328,6 +329,7 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
                 conf.model_name,
                 without_head=conf.is_reward_model,
                 torch_dtype=dtype,
+                cache_dir=conf.cache_dir
             )
 
         n_embs = model.get_input_embeddings().num_embeddings

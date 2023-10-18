@@ -29,5 +29,6 @@
       "total_num_steps": "auto"
     }
   },
-"steps_per_print": 20
+"steps_per_print": 50,
+"wall_clock_breakdown": true
 }

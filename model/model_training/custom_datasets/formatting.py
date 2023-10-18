@@ -3,7 +3,8 @@ from enum import Enum
 from itertools import zip_longest
 from random import random, shuffle
 from typing import Literal, Optional
-
+from model_training import print_rank_0
+import logging
 from pydantic import BaseModel, validator
 from pydantic.fields import ModelField
 
@@ -76,7 +77,7 @@ class Utterance(BaseModel):
 
         # ensure that potentially multi-line conext field comes last
         if self.context:
-            properties.append(("konteksti", self.context))
+            properties.append(("context", self.context))
 
         fragments: list[str] = []
         for k, v in properties:

@@ -138,12 +138,12 @@ oasst-rm-1-pythia-2.8b:
   save_steps: 500
   deepspeed_config: configs/zero3_config_sft.json
 
-oasst-finnish-gpt-rm:
+finnish-gpt-small-rm:
   is_reward_model: true
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /projappl/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+        input_file_path: /scratch/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
         val_split: 0.10
   use_custom_sampler: true
   sort_by_length: false
@@ -163,18 +163,30 @@ oasst-finnish-gpt-rm:
   num_train_epochs: 1
   eval_steps: 500
 
-oasst-rm-1-pythia-1.4b:
+finnish-gpt-3b-rm:
   is_reward_model: true
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /pfs/lustrep2/scratch/project_462000241/ville/oa_data/finnish_oasst1_ready_trees.jsonl
-        val_split: 0.2
-  model_name: /scratch/project_462000241/ville/oa_models/finnish_gpt_small_sft/checkpoint-13000
+        input_file_path: /scratch/project_462000241/villekom/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+        val_split: 0.10
+  model_name: /scratch/project_462000241/villekom/oa_models/sft/finnish_gpt3_3b_sft
+  dtype: bf16
+  learning_rate: 1e-5
+  residual_dropout: 0.01
+  weight_decay: 0.1
   max_length: 2048
-  gradient_accumulation_steps: 1
+  use_flash_attention: false
+  fused_gelu: true
+  warmup_steps: 50
+  gradient_accumulation_steps: 4
   per_device_train_batch_size: 4
-  per_device_eval_batch_size: 4
-  log_wandb: false
-  verbose: false
+  per_device_eval_batch_size: 5
+  save_strategy: epoch
+  save_total_limit: 1
+  num_train_epochs: 1
+  eval_steps: 500
   metrics: ["accuracy"]
+  deepspeed_config: configs/zero3_config_sft.json
+  gradient_checkpointing: true
+  use_custom_sampler: false

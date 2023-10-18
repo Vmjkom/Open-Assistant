@@ -89,6 +89,7 @@ defaults:
   peft_model: false
   peft_type: "lora"
   superhot: false
+  log_level: passive
 
 use_system_tag:
   use_system_tag: True
@@ -211,7 +212,7 @@ oasst_finnish:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /flash/project_462000241/ville/oasst_data/finnish_oasst1_ready_trees_no_code.jsonl
+        input_file_path: /flash/project_462000241/ville/oasst_data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
         val_split: 0.10
   sort_by_length: false
   use_custom_sampler: false
@@ -763,21 +764,43 @@ codegen:
   per_device_eval_batch_size: 4
 
 debug:
-  model_name: TurkuNLP/gpt3-finnish-xl
-  gradient_checkpointing: true
-  eval_steps: 50
-  gradient_accumulation_steps: 16
-  per_device_train_batch_size: 2
-  per_device_eval_batch_size: 2
-  warmup_steps: 50
-  log_wandb: false
-  verbose: true
-  save_strategy: epoch
-  num_train_epochs: 5
-  save_total_limit: 1
   dtype: bf16
-  deepspeed_config: configs/zero0_config.json
-  label_masking: false
+  learning_rate: 6e-6
+  model_name: TurkuNLP/gpt3-finnish-small
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 1
+  eval_accumulation_steps: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  datasets:
+    - oasst_export:
+        lang: "en"
+        input_file_path: /scratch/project_462000241/villekom/data/oa_data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
+        val_split: 0.10
+        max_val_set: 500
+    - dolly15k_fi:
+        val_split: 0.05
+        max_val_set: 300
+    - finnish_instruction_qa:
+        max_val_set: 100
+        size: 5000
+  log_wandb: false
+  logging_steps: 10
+  deepspeed_config: configs/zero_debug_config.json
+  warmup_steps: 100
+  eval_steps: 100
+  save_strategy: steps
+  save_steps: 100
+  save_total_limit: 1
+  fuse_gelu: false
+  verbose: true
+  num_train_epochs: 1
+  random_offset_probability: 0.5
+  system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
+  use_system_prefix: false
+  sort_by_length: false
+  use_custom_sampler: true
+  log_level: debug
 
 gpt3-finnish-small:
   dtype: bf16
@@ -786,32 +809,28 @@ gpt3-finnish-small:
   learning_rate: 2e-5
   model_name: TurkuNLP/gpt3-finnish-small
   gradient_checkpointing: True
-  gradient_accumulation_steps: 12
+  gradient_accumulation_steps: 4
   per_device_train_batch_size: 4
   per_device_eval_batch_size: 4
   log_wandb: false
-  deepspeed_config: configs/zero3_config_sft.json
+  deepspeed_config: configs/zero_config.json
   verbose: true
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_462000241/villekom/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+        input_file_path: /scratch/project_462000241/villekom/data/oa_data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
         val_split: 0.10
     - finnish_instruction_qa:
         val_split: 0.10
         size: 5000
     - dolly15k_fi:
-        size: 5000
         val_split: 0.05
         max_val_set: 300
-    - finnish_natural_instructions:
-        val_split: 0.05
-        size: 5000
   max_length: 2048
   eval_max_length: 2048
   save_strategy: 'epoch'
-  num_train_epochs: 2
-  save_total_limit: 1
+  num_train_epochs: 5
+  save_total_limit: 5
   system_prefix: "Olet kielimalli, joka haluaa olla avuksi vastaten mahdollisimman ytimekkäästi"
   
 
@@ -825,8 +844,18 @@ gpt3-finnish-xl:
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code.jsonl
+        input_file_path: /scratch/project_462000241/data/oa_data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
         val_split: 0.10
+    - finnish_instruction_qa:
+        val_split: 0.10
+        size: 1000
+    - dolly15k_fi:
+        size: 800
+        val_split: 0.05
+        max_val_set: 300
+    - finnish_natural_instructions:
+        val_split: 0.05
+        size: 500
   log_wandb: false
   deepspeed_config: configs/zero0_config.json
   warmup_steps: 200
@@ -843,63 +872,112 @@ gpt3-finnish-xl:
   use_system_prefix: false
   
 gpt3-finnish-3B:
-  learning_rate: 6e-6
-  model_name: TurkuNLP/gpt3-finnish-3B
-  gradient_checkpointing: false
-  gradient_accumulation_steps: 1
-  per_device_train_batch_size: 1
-  per_device_eval_batch_size: 1
-  datasets:
-    - oasst_export:
-        lang: "en"
-        input_file_path: /scratch/project_462000241/data/oa_data/finnish_oasst1_ready_trees.jsonl
-        val_split: 0.10
-    - finnish_instruction_qa:
-        val_split: 0.10
-        fraction: 0.05
-  log_wandb: false
-  deepspeed_config: configs/zero_config.json
-  warmup_steps: 400
-  eval_steps: 100
-  save_strategy: 'no'
-  save_total_limit: 0
-  fuse_gelu: true
-  verbose: true
-  num_train_epochs: 2
-  max_length: 2048
-  eval_max_length: 2048
-  random_offset_probability: 0.1
-  dtype:
-  system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
-  use_system_prefix: true
-
-gpt3-finnish-13B:
-  learning_rate: 6e-6
+  dtype: bf16
+  learning_rate: 2e-5
+  sort_by_length: false
   model_name: TurkuNLP/gpt3-finnish-13B
   gradient_checkpointing: false
-  gradient_accumulation_steps: 1
-  per_device_train_batch_size: 1
-  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 16
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
   datasets:
     - oasst_export:
         lang: "en"
-        input_file_path: /scratch/project_462000241/data/oa_data/finnish_oasst1_ready_trees.jsonl
+        input_file_path: /scratch/project_462000241/villekom/data/oa_data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
         val_split: 0.10
     - finnish_instruction_qa:
-        val_split: 0.10
-        fraction: 0.05
+        val_split: 0.05
+        size: 5000
+    - dolly15k_fi:
+        val_split: 0.1
+        max_val_set: 300
+  use_custom_sampler: true
   log_wandb: false
   deepspeed_config: configs/zero_config.json
-  warmup_steps: 400
+  warmup_steps: 100
   eval_steps: 100
-  save_strategy: 'no'
-  save_total_limit: 0
+  save_strategy: 'epoch'
+  save_total_limit: 2
   fuse_gelu: true
-  verbose: true
+  verbose: false
   num_train_epochs: 2
   max_length: 2048
   eval_max_length: 2048
-  random_offset_probability: 0.1
-  dtype:
+  random_offset_probability: 0.2
   system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
-  use_system_prefix: true
+  use_system_prefix: false
+
+gpt3-finnish-13B:
+  dtype: bf16
+  learning_rate: 6e-6
+  model_name: TurkuNLP/gpt3-finnish-13B
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 1
+  eval_accumulation_steps: 1
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  datasets:
+    - oasst_export:
+        lang: "en"
+        input_file_path: /scratch/project_462000241/villekom/data/oa_data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
+        val_split: 0.10
+        max_val_set: 500
+    - dolly15k_fi:
+        val_split: 0.05
+        max_val_set: 300
+    - finnish_instruction_qa:
+        max_val_set: 100
+        size: 5000
+  log_wandb: false
+  logging_steps: 10
+  deepspeed_config: configs/zero_config.json
+  warmup_steps: 100
+  eval_steps: 100
+  save_strategy: epoch
+  save_total_limit: 4
+  fuse_gelu: false
+  verbose: false
+  num_train_epochs: 4
+  random_offset_probability: 0.1
+  system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
+  use_system_prefix: false
+  sort_by_length: false
+  use_custom_sampler: true
+
+gpt3-fin-eng-code:
+  dtype: bf16
+  learning_rate: 8e-6
+  model_name: /scratch/project_462000241/models/gpt3-fin-eng-code-33B-cp-31680-bf16
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 1
+  eval_accumulation_steps: 1
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  datasets:
+    - oasst_export:
+        lang: "en"
+        input_file_path: /scratch/project_462000241/villekom/data/oa_data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
+        val_split: 0.10
+        max_val_set: 500
+    - dolly15k_fi:
+        val_split: 0.05
+        max_val_set: 300
+    - finnish_instruction_qa:
+        max_val_set: 100
+        size: 5000
+  log_wandb: false
+  logging_steps: 1
+  deepspeed_config: configs/zero_config.json
+  warmup_steps: 100
+  eval_steps: 100
+  save_strategy: steps
+  save_steps: 100
+  save_total_limit: 4
+  fuse_gelu: false
+  verbose: true
+  num_train_epochs: 2
+  random_offset_probability: 0.5
+  system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
+  use_system_prefix: false
+  sort_by_length: false
+  use_custom_sampler: true

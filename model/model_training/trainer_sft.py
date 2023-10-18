@@ -349,7 +349,7 @@ def main():
     # needs to happen before model loading in case of stage 3 training
     args = TrainingArguments(
         output_dir=output_dir,
-        overwrite_output_dir=True,
+        overwrite_output_dir=False,
         num_train_epochs=training_conf.num_train_epochs,
         warmup_steps=training_conf.warmup_steps,
         learning_rate=float(training_conf.learning_rate),
@@ -377,8 +377,10 @@ def main():
         eval_accumulation_steps=training_conf.eval_accumulation_steps,
         resume_from_checkpoint=training_conf.resume_from_checkpoint,
         report_to=training_conf.report_to,
-        dataloader_drop_last=True,
-        dataloader_num_workers=int(os.environ['SLURM_CPUS_PER_TASK'])-1
+        dataloader_num_workers=0,
+        log_level=training_conf.log_level,
+        log_on_each_node=False,
+        #full_determinism=True
     )
 
     json_args = args.to_json_string()

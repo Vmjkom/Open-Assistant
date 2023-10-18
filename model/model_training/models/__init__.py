@@ -24,24 +24,23 @@ def get_specific_model(
     model_name,
     seq2seqmodel=False,
     without_head=False,
-    cache_dir=".cache",
     quantization=False,
     **kwargs,
 ):
     if without_head:
-        model = transformers.AutoModel.from_pretrained(model_name, cache_dir=cache_dir, **kwargs)
+        model = transformers.AutoModel.from_pretrained(model_name, **kwargs)
     elif seq2seqmodel:
         # encoder-decoder support for Flan-T5 like models
-        model = transformers.AutoModelForSeq2SeqLM.from_pretrained(model_name, cache_dir=cache_dir, **kwargs)
+        model = transformers.AutoModelForSeq2SeqLM.from_pretrained(model_name, **kwargs)
     else:
         if "falcon-7b" in model_name:
             # temporary hack until tiiuae/falcon-7b uses the transformer's Falcon impl by default
             # in-library PR was reverted https://huggingface.co/tiiuae/falcon-7b/commit/378337427557d1df3e742264a2901a49f25d4eb1
             model = transformers.models.falcon.modeling_falcon.FalconForCausalLM.from_pretrained(
-                model_name, cache_dir=cache_dir, **kwargs
+                model_name, **kwargs
             )
         else:
             if "falcon" in model_name:
                 kwargs["trust_remote_code"] = True
-            model = transformers.AutoModelForCausalLM.from_pretrained(model_name, cache_dir=cache_dir, **kwargs)
+            model = transformers.AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
     return model

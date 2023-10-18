@@ -1,10 +1,10 @@
 import random
 from dataclasses import dataclass
 from typing import Optional, Union
-
+import logging
 import numpy as np
 import torch
-from model_training import print_rank_0
+from model_training import print_rank_0,is_last_rank
 from model_training.custom_datasets.formatting import (
     QA_SPECIAL_TOKENS,
     DatasetEntryLm,
@@ -27,7 +27,7 @@ class DialogueDataCollator:
     max_length: Optional[int] = None
     mix_length_threshold: Optional[int] = 256
     mix_probability: Optional[float] = 0.6
-    pad_to_multiple_of: Optional[int] = 16
+    pad_to_multiple_of: Optional[int] = None
     samples_mixing: Optional[bool] = False
     random_offset_probability: Optional[float] = 0.5
     label_masking: bool = True
@@ -73,16 +73,14 @@ class DialogueDataCollator:
         else:
             messages = list(messages)
             messages = format_pairs(messages, self.tokenizer.eos_token)
-
+        #Only truncation
         flatten_message = self.tokenizer(
             "".join(messages),
             max_length=max_length,
             truncation=truncation,
             padding=False,
         )
-        if len(flatten_message['input_ids']) > self.tokenizer.model_max_length:
-            print_rank_0(f"Flatten message that is too long {self.tokenizer.decode(flatten_message['input_ids'], clean_up_tokenization_spaces=False)}")
-            self.print_batch = True
+        
             
         if pretrain_dataset:
             label_mask = np.ones(len(flatten_message.input_ids), dtype=bool)
@@ -138,7 +136,7 @@ class DialogueDataCollator:
 
         if len(flatten_message.input_ids) < self.mix_length_threshold and self.samples_mixing:
             total_short_context_one += len(flatten_message.input_ids)
-
+        
         return {k: v for k, v in flatten_message.items() if k != "offset_mapping"}, label_mask, total_short_context_one
 
     def __call__(self, features):
@@ -197,7 +195,7 @@ class DialogueDataCollator:
                 np.concatenate([np.zeros_like(self.system_prefix).astype(bool), label_mask])
                 for label_mask in label_masks
             ]
-
+        
         batch = self.tokenizer.pad(
             flatten_messages,
             padding=self.padding,
@@ -210,7 +208,5 @@ class DialogueDataCollator:
             [F.pad(torch.tensor(x), (0, dim - len(x)), value=False) for x in label_masks]
         )
         batch["targets"] = torch.roll(batch.input_ids, -1, -1)
-        if self.print_batch:
-            print_rank_0(f"Batch decoded {self.tokenizer.batch_decode(batch['input_ids'],clean_up_tokenization_spaces=False)}")
-            self.print_batch = False
+        
         return batch
