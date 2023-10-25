@@ -1,8 +1,14 @@
 # Train using supervised examples
+## Setting up enviroment for Puhti/Mahti
 
-## Requirements
+Add this tykky container wrapper to your PATH
+It includes most of the depencies and is equipped with python version 3.10
 
-`pip install -e ..` (pyproject.toml resides in the parent directory)
+`export PATH=/projappl/project_2007628/OA_tykky/bin:$PATH`
+
+Now pip install local packages model_training and oasst_data into your userspace or venv
+
+`pip install -e ..` (pyproject.toml resides in the model directory)
 
 Make sure the oasst_data module is installed
 
