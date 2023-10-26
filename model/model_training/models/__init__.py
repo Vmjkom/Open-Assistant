@@ -1,4 +1,5 @@
 import transformers
+from model_training import is_last_rank, print_rank_0
 
 
 def freeze_top_n_layers(model, target_layers):
@@ -44,4 +45,5 @@ def get_specific_model(
             if "falcon" in model_name:
                 kwargs["trust_remote_code"] = True
             model = transformers.AutoModelForCausalLM.from_pretrained(model_name, cache_dir=cache_dir, **kwargs)
+    print_rank_0(f"Model that is used is of type: {type(model)}")
     return model

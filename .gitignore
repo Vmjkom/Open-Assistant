@@ -27,3 +27,4 @@ backend/openapi.json
 .idea/
 model/model_training/logs/latest.out
 model/model_training/logs/latest.out
+model/model_training/logs/*

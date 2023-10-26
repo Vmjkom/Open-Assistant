@@ -80,9 +80,9 @@ class DialogueDataCollator:
             truncation=truncation,
             padding=False,
         )
-        if len(flatten_message['input_ids']) > self.tokenizer.model_max_length:
-            print_rank_0(f"Flatten message that is too long {self.tokenizer.decode(flatten_message['input_ids'], clean_up_tokenization_spaces=False)}")
-            self.print_batch = True
+        #if len(flatten_message['input_ids']) > self.tokenizer.model_max_length:
+        #    print_rank_0(f"Flatten message that is too long {self.tokenizer.decode(flatten_message['input_ids'], clean_up_tokenization_spaces=False)}")
+        #    self.print_batch = True
             
         if pretrain_dataset:
             label_mask = np.ones(len(flatten_message.input_ids), dtype=bool)
@@ -210,7 +210,7 @@ class DialogueDataCollator:
             [F.pad(torch.tensor(x), (0, dim - len(x)), value=False) for x in label_masks]
         )
         batch["targets"] = torch.roll(batch.input_ids, -1, -1)
-        if self.print_batch:
-            print_rank_0(f"Batch decoded {self.tokenizer.batch_decode(batch['input_ids'],clean_up_tokenization_spaces=False)}")
-            self.print_batch = False
+        #if self.print_batch:
+        #    print_rank_0(f"Batch decoded {self.tokenizer.batch_decode(batch['input_ids'],clean_up_tokenization_spaces=False)}")
+        #    self.print_batch = False
         return batch

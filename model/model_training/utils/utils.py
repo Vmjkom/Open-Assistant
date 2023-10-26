@@ -190,6 +190,7 @@ TOKENIZER_CONFIGS = {
         special_tokens=SpecialTokens("<|endoftext|>", "<|endoftext|>", sep_token="<|endoftext|>")
     ),
     "LLongMA": TokenizerConfig(special_tokens=SpecialTokens("</s>", "</s>", sep_token="<s>")),
+    "poro": TokenizerConfig(special_tokens=SpecialTokens("<pad>","</s>",sep_token="</s>"))
 }
 
 

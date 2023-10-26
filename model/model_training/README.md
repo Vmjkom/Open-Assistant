@@ -2,13 +2,19 @@
 ## Setting up enviroment for Puhti/Mahti
 
 Add this tykky container wrapper to your PATH
+`export PATH=/projappl/project_2007628/villekom/OA_tykky/bin:$PATH`
 It includes most of the depencies and is equipped with python version 3.10
 
-`export PATH=/projappl/project_2007628/OA_tykky/bin:$PATH`
+More about tykky container wrappers here: https://docs.csc.fi/computing/containers/tykky/
 
-Now pip install local packages model_training and oasst_data into your userspace or venv
 
-`pip install -e ..` (pyproject.toml resides in the model directory)
+Now follow the requirements section for pip installing the local packages "model_training" and "oasst_data" into your userspace or venv
+Successful running of the pytests is not a requirement for training to work and havent been configured for Lumi/Puhti
+
+
+## Requirements
+
+`pip install -e ..` (pyproject.toml resides in the parent directory)
 
 Make sure the oasst_data module is installed
 
@@ -27,6 +33,9 @@ python -m pip install flash_attn
 ```
 
 Start training SFT model
+
+Modify the Sbatch scripts in the "slurm_scripts" directory to your own needs
+Look to trainer_sft.py for cl arguments
 
 ```bash
 python trainer_sft.py --configs galactica-125m

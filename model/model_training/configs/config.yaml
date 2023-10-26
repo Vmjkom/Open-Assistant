@@ -1069,7 +1069,7 @@ llama2_13b_orcacode2_8k:
 
 gpt3-finnish-small:
   model_name: TurkuNLP/gpt3-finnish-small
-  dtype: float32
+  dtype: bf16
   gradient_checkpointing: True
   gradient_accumulation_steps: 12
   per_device_train_batch_size: 4
@@ -1097,9 +1097,6 @@ gpt3-finnish-small:
         size: 5000
         val_split: 0.05
         max_val_set: 300
-    - finnish_natural_instructions:
-        val_split: 0.05
-        size: 5000
 
 gpt3-finnish-xl:
   learning_rate: 1e-5
@@ -1121,3 +1118,78 @@ gpt3-finnish-xl:
   dtype: bf16
   system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
   use_system_prefix: false
+
+gpt3-finnish-13B:
+  dtype: bf16
+  learning_rate: 6e-6
+  model_name: TurkuNLP/gpt3-finnish-13B
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 1
+  eval_accumulation_steps: 1
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  datasets:
+    - oasst_export:
+        lang: "en"
+        input_file_path: /scratch/project_2007628/villekom/data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
+        val_split: 0.10
+        max_val_set: 500
+    - dolly15k_fi:
+        val_split: 0.05
+        max_val_set: 300
+    - finnish_instruction_qa:
+        max_val_set: 100
+        size: 5000
+  log_wandb: false
+  logging_steps: 10
+  deepspeed_config: configs/zero_config.json
+  warmup_steps: 100
+  eval_steps: 100
+  save_strategy: epoch
+  save_total_limit: 4
+  fuse_gelu: false
+  verbose: false
+  num_train_epochs: 4
+  random_offset_probability: 0.1
+  system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
+  use_system_prefix: false
+  sort_by_length: false
+  use_custom_sampler: true
+
+poro:
+  dtype: bf16
+  learning_rate: 8e-6
+  model_name: /scratch/project_2007628/villekom/poro
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 1
+  eval_accumulation_steps: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  datasets:
+    - oasst_export:
+        lang: "en"
+        input_file_path: /scratch/project_2007628/villekom/data/finnish_oasst1_ready_trees_no_code_utf8.jsonl
+        val_split: 0.10
+        max_val_set: 500
+    - dolly15k_fi:
+        val_split: 0.05
+        max_val_set: 300
+    - finnish_instruction_qa:
+        max_val_set: 100
+        size: 5000
+  log_wandb: false
+  logging_steps: 1
+  deepspeed_config: configs/zero3_config_sft.json
+  warmup_steps: 100
+  eval_steps: 100
+  save_strategy: steps
+  save_steps: 100
+  save_total_limit: 4
+  fuse_gelu: false
+  verbose: true
+  num_train_epochs: 2
+  random_offset_probability: 0.5
+  system_prefix: "Olet kielimalli, joka haluaa olla avuksi ja vastata mahdollisimman ytimekkäästi"
+  use_system_prefix: false
+  sort_by_length: false
+  use_custom_sampler: true
