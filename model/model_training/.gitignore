@@ -16,3 +16,4 @@ model_rl
 triton_models
 ckpts
 logs/
+conda.yml
